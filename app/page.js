@@ -8,6 +8,7 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [reportResult, setReportResult] = useState("");
 
   function searchRestaurants() {
     if (!navigator.geolocation) {
@@ -19,6 +20,7 @@ export default function Home() {
     setError("");
     setLocationStatus("現在地を取得中...");
     setSelectedRestaurant(null);
+    setReportResult("");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -72,6 +74,8 @@ export default function Home() {
 
   function openRestaurant(restaurant) {
     setSelectedRestaurant(restaurant);
+    setReportResult("");
+
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -80,6 +84,11 @@ export default function Home() {
 
   function closeRestaurant() {
     setSelectedRestaurant(null);
+    setReportResult("");
+  }
+
+  function selectReport(result) {
+    setReportResult(result);
   }
 
   if (selectedRestaurant) {
@@ -115,7 +124,7 @@ export default function Home() {
             <div className="trustIcon">✓</div>
 
             <div>
-              <strong>喫煙情報</strong>
+              <strong>掲載されている喫煙情報</strong>
               <p>
                 {selectedRestaurant.smoking || "喫煙情報なし"}
               </p>
@@ -141,6 +150,99 @@ export default function Home() {
               <strong>予算</strong>
               <p>{selectedRestaurant.budget || "情報なし"}</p>
             </div>
+          </div>
+
+          <div
+            style={{
+              marginTop: "30px",
+              marginBottom: "30px",
+              padding: "22px",
+              borderRadius: "18px",
+              background: "#f5f5f5",
+            }}
+          >
+            <strong
+              style={{
+                display: "block",
+                marginBottom: "6px",
+                fontSize: "18px",
+              }}
+            >
+              今日、ここで吸えた？
+            </strong>
+
+            <p
+              style={{
+                margin: "0 0 18px",
+                color: "#737373",
+                fontSize: "13px",
+              }}
+            >
+              最新の喫煙状況をみんなで共有
+            </p>
+
+            {!reportResult ? (
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                }}
+              >
+                <button
+                  className="filterCard"
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
+                  onClick={() => selectReport("paper_ok")}
+                >
+                  <span>🚬 紙巻き吸えた</span>
+                </button>
+
+                <button
+                  className="filterCard"
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
+                  onClick={() => selectReport("heated_only")}
+                >
+                  <span>🔥 加熱式だけ吸えた</span>
+                </button>
+
+                <button
+                  className="filterCard"
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
+                  onClick={() => selectReport("not_allowed")}
+                >
+                  <span>🚭 吸えなかった</span>
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "18px",
+                  borderRadius: "14px",
+                  background: "#ffffff",
+                  textAlign: "center",
+                }}
+              >
+                <strong>✓ 回答ありがとう</strong>
+
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: "#737373",
+                    fontSize: "13px",
+                  }}
+                >
+                  次のステップで、この回答を保存できるようにします。
+                </p>
+              </div>
+            )}
           </div>
 
           {selectedRestaurant.urls && (
@@ -228,7 +330,7 @@ export default function Home() {
       {restaurants.length > 0 && (
         <section className="filterSection">
           <p className="filterTitle">
-            喫煙可能な候補（{restaurants.length}件）
+            喫煙候補（{restaurants.length}件）
           </p>
 
           <div>
