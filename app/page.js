@@ -4,27 +4,49 @@ import { useState } from "react";
 
 export default function Home() {
   const [locationStatus, setLocationStatus] = useState("現在地から探す");
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  function getCurrentLocation() {
+  function searchRestaurants() {
     if (!navigator.geolocation) {
-      setLocationStatus("現在地を取得できません");
+      setError("この端末では現在地を取得できません");
       return;
     }
 
+    setLoading(true);
+    setError("");
     setLocationStatus("現在地を取得中...");
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
+      async (position) => {
+        try {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
 
-        console.log("latitude:", latitude);
-        console.log("longitude:", longitude);
+          setLocationStatus("現在地を取得しました");
 
-        setLocationStatus("現在地を取得しました");
+          const response = await fetch(
+            `/api/restaurants?lat=${lat}&lng=${lng}`
+          );
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "店舗検索に失敗しました");
+          }
+
+          setRestaurants(data.restaurants || []);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
       },
       () => {
         setLocationStatus("現在地の利用を許可してください");
+        setError("現在地を取得できませんでした");
+        setLoading(false);
       },
       {
         enableHighAccuracy: true,
@@ -38,13 +60,14 @@ export default function Home() {
     <main className="home">
       <header className="header">
         <div className="logo">SMOKE MAP</div>
+
         <button className="menuButton" aria-label="メニュー">
           ☰
         </button>
       </header>
 
       <section className="hero">
-        <button className="location" onClick={getCurrentLocation}>
+        <button className="location" onClick={searchRestaurants}>
           <span>📍</span>
           <span>{locationStatus}</span>
         </button>
@@ -61,49 +84,81 @@ export default function Home() {
           あなたの条件に合う飲食店を探せます。
         </p>
 
-        <button className="searchButton" onClick={getCurrentLocation}>
+        <button className="searchButton" onClick={searchRestaurants}>
           <span>🔍</span>
-          今すぐ吸える店を探す
+          {loading ? "近くのお店を検索中..." : "今すぐ吸える店を探す"}
         </button>
+
+        {error && <p>{error}</p>}
       </section>
 
-      <section className="filterSection">
-        <p className="filterTitle">吸い方から探す</p>
-
-        <div className="filterGrid">
-          <button className="filterCard">
-            <span className="filterIcon">🚬</span>
-            <span>紙巻きOK</span>
-          </button>
-
-          <button className="filterCard">
-            <span className="filterIcon">🔥</span>
-            <span>加熱式OK</span>
-          </button>
-
-          <button className="filterCard">
-            <span className="filterIcon">🪑</span>
-            <span>席で吸える</span>
-          </button>
-
-          <button className="filterCard">
-            <span className="filterIcon">🚪</span>
-            <span>喫煙室あり</span>
-          </button>
-        </div>
-      </section>
-
-      <section className="trustBox">
-        <div className="trustIcon">✓</div>
-
-        <div>
-          <strong>新しい喫煙情報を優先</strong>
-          <p>
-            公式情報と最近のユーザー確認から、
-            今の喫煙状況を確認できます。
+      {restaurants.length > 0 && (
+        <section className="filterSection">
+          <p className="filterTitle">
+            現在地周辺のお店（{restaurants.length}件）
           </p>
-        </div>
-      </section>
+
+          <div>
+            {restaurants.map((restaurant) => (
+              <div className="trustBox" key={restaurant.id}>
+                <div>
+                  <strong>{restaurant.name}</strong>
+
+                  <p>
+                    {restaurant.genre}
+                    <br />
+                    {restaurant.smoking || "喫煙情報なし"}
+                    <br />
+                    {restaurant.address}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {restaurants.length === 0 && (
+        <>
+          <section className="filterSection">
+            <p className="filterTitle">吸い方から探す</p>
+
+            <div className="filterGrid">
+              <button className="filterCard">
+                <span className="filterIcon">🚬</span>
+                <span>紙巻きOK</span>
+              </button>
+
+              <button className="filterCard">
+                <span className="filterIcon">🔥</span>
+                <span>加熱式OK</span>
+              </button>
+
+              <button className="filterCard">
+                <span className="filterIcon">🪑</span>
+                <span>席で吸える</span>
+              </button>
+
+              <button className="filterCard">
+                <span className="filterIcon">🚪</span>
+                <span>喫煙室あり</span>
+              </button>
+            </div>
+          </section>
+
+          <section className="trustBox">
+            <div className="trustIcon">✓</div>
+
+            <div>
+              <strong>新しい喫煙情報を優先</strong>
+              <p>
+                公式情報と最近のユーザー確認から、
+                今の喫煙状況を確認できます。
+              </p>
+            </div>
+          </section>
+        </>
+      )}
 
       <nav className="bottomNav">
         <button className="navActive">
