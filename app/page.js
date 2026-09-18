@@ -5,6 +5,7 @@ import { useState } from "react";
 export default function Home() {
   const [locationStatus, setLocationStatus] = useState("現在地から探す");
   const [restaurants, setRestaurants] = useState([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -17,6 +18,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     setLocationStatus("現在地を取得中...");
+    setSelectedRestaurant(null);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -45,7 +47,9 @@ export default function Home() {
           setRestaurants(smokingRestaurants);
 
           if (smokingRestaurants.length === 0) {
-            setError("現在地周辺に喫煙可能な候補店が見つかりませんでした");
+            setError(
+              "現在地周辺に喫煙可能な候補店が見つかりませんでした"
+            );
           }
         } catch (err) {
           setError(err.message);
@@ -63,6 +67,119 @@ export default function Home() {
         timeout: 10000,
         maximumAge: 60000,
       }
+    );
+  }
+
+  function openRestaurant(restaurant) {
+    setSelectedRestaurant(restaurant);
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function closeRestaurant() {
+    setSelectedRestaurant(null);
+  }
+
+  if (selectedRestaurant) {
+    return (
+      <main className="home">
+        <header className="header">
+          <div className="logo">SMOKE MAP</div>
+
+          <button
+            className="menuButton"
+            onClick={closeRestaurant}
+            aria-label="戻る"
+          >
+            ←
+          </button>
+        </header>
+
+        <section className="hero">
+          <div className="location">
+            <span>🚬</span>
+            <span>喫煙候補店</span>
+          </div>
+
+          <h1>{selectedRestaurant.name}</h1>
+
+          <p className="description">
+            {selectedRestaurant.genre || "ジャンル情報なし"}
+          </p>
+        </section>
+
+        <section className="filterSection">
+          <div className="trustBox">
+            <div className="trustIcon">✓</div>
+
+            <div>
+              <strong>喫煙情報</strong>
+              <p>
+                {selectedRestaurant.smoking || "喫煙情報なし"}
+              </p>
+            </div>
+          </div>
+
+          <div className="trustBox">
+            <div>
+              <strong>住所</strong>
+              <p>{selectedRestaurant.address || "情報なし"}</p>
+            </div>
+          </div>
+
+          <div className="trustBox">
+            <div>
+              <strong>営業時間</strong>
+              <p>{selectedRestaurant.open || "情報なし"}</p>
+            </div>
+          </div>
+
+          <div className="trustBox">
+            <div>
+              <strong>予算</strong>
+              <p>{selectedRestaurant.budget || "情報なし"}</p>
+            </div>
+          </div>
+
+          {selectedRestaurant.urls && (
+            <a
+              className="searchButton"
+              href={selectedRestaurant.urls}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              予約・店舗情報を見る
+            </a>
+          )}
+        </section>
+
+        <nav className="bottomNav">
+          <button
+            className="navActive"
+            onClick={closeRestaurant}
+          >
+            <span>←</span>
+            <small>戻る</small>
+          </button>
+
+          <button>
+            <span>♡</span>
+            <small>お気に入り</small>
+          </button>
+
+          <button>
+            <span>☷</span>
+            <small>履歴</small>
+          </button>
+
+          <button>
+            <span>○</span>
+            <small>マイページ</small>
+          </button>
+        </nav>
+      </main>
     );
   }
 
@@ -94,9 +211,15 @@ export default function Home() {
           あなたの条件に合う飲食店を探せます。
         </p>
 
-        <button className="searchButton" onClick={searchRestaurants}>
+        <button
+          className="searchButton"
+          onClick={searchRestaurants}
+          disabled={loading}
+        >
           <span>🔍</span>
-          {loading ? "近くのお店を検索中..." : "今すぐ吸える店を探す"}
+          {loading
+            ? "近くのお店を検索中..."
+            : "今すぐ吸える店を探す"}
         </button>
 
         {error && <p>{error}</p>}
@@ -110,7 +233,17 @@ export default function Home() {
 
           <div>
             {restaurants.map((restaurant) => (
-              <div className="trustBox" key={restaurant.id}>
+              <button
+                className="trustBox"
+                key={restaurant.id}
+                onClick={() => openRestaurant(restaurant)}
+                style={{
+                  width: "calc(100% - 44px)",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
                 <div>
                   <strong>{restaurant.name}</strong>
 
@@ -122,7 +255,7 @@ export default function Home() {
                     {restaurant.address}
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
