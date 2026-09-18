@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "喫煙可能飲食店マップ",
   description: "今、本当に吸える店が3秒で分かる。",
