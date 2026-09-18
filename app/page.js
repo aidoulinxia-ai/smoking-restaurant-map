@@ -36,7 +36,17 @@ export default function Home() {
             throw new Error(data.error || "店舗検索に失敗しました");
           }
 
-          setRestaurants(data.restaurants || []);
+          const smokingRestaurants = (data.restaurants || []).filter(
+            (restaurant) =>
+              restaurant.smoking &&
+              !restaurant.smoking.includes("全面禁煙")
+          );
+
+          setRestaurants(smokingRestaurants);
+
+          if (smokingRestaurants.length === 0) {
+            setError("現在地周辺に喫煙可能な候補店が見つかりませんでした");
+          }
         } catch (err) {
           setError(err.message);
         } finally {
@@ -95,7 +105,7 @@ export default function Home() {
       {restaurants.length > 0 && (
         <section className="filterSection">
           <p className="filterTitle">
-            現在地周辺のお店（{restaurants.length}件）
+            喫煙可能な候補（{restaurants.length}件）
           </p>
 
           <div>
@@ -107,7 +117,7 @@ export default function Home() {
                   <p>
                     {restaurant.genre}
                     <br />
-                    {restaurant.smoking || "喫煙情報なし"}
+                    🚬 {restaurant.smoking}
                     <br />
                     {restaurant.address}
                   </p>
@@ -118,7 +128,7 @@ export default function Home() {
         </section>
       )}
 
-      {restaurants.length === 0 && (
+      {restaurants.length === 0 && !loading && !error && (
         <>
           <section className="filterSection">
             <p className="filterTitle">吸い方から探す</p>
