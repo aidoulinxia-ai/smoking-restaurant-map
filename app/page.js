@@ -13,6 +13,9 @@ export default function Home() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
+  const [smokingStatus, setSmokingStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
   function searchRestaurants() {
     if (!navigator.geolocation) {
       setError("この端末では現在地を取得できません");
@@ -23,8 +26,6 @@ export default function Home() {
     setError("");
     setLocationStatus("現在地を取得中...");
     setSelectedRestaurant(null);
-    setReportResult("");
-    setReportError("");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -76,10 +77,41 @@ export default function Home() {
     );
   }
 
+  async function loadSmokingStatus(restaurantId) {
+    setStatusLoading(true);
+    setSmokingStatus(null);
+
+    try {
+      const response = await fetch(
+        `/api/smoking-status?restaurantId=${encodeURIComponent(
+          restaurantId
+        )}`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "最新情報を取得できませんでした"
+        );
+      }
+
+      setSmokingStatus(data);
+    } catch (err) {
+      console.error(err);
+      setSmokingStatus(null);
+    } finally {
+      setStatusLoading(false);
+    }
+  }
+
   function openRestaurant(restaurant) {
     setSelectedRestaurant(restaurant);
     setReportResult("");
     setReportError("");
+    setSmokingStatus(null);
+
+    loadSmokingStatus(restaurant.id);
 
     window.scrollTo({
       top: 0,
@@ -91,9 +123,10 @@ export default function Home() {
     setSelectedRestaurant(null);
     setReportResult("");
     setReportError("");
+    setSmokingStatus(null);
   }
 
-  async function submitSmokingReport(smokingStatus) {
+  async function submitSmokingReport(smokingStatusValue) {
     if (!selectedRestaurant || reportLoading) {
       return;
     }
@@ -110,7 +143,7 @@ export default function Home() {
         body: JSON.stringify({
           restaurantId: selectedRestaurant.id,
           restaurantName: selectedRestaurant.name,
-          smokingStatus,
+          smokingStatus: smokingStatusValue,
         }),
       });
 
@@ -120,12 +153,66 @@ export default function Home() {
         throw new Error(data.error || "報告を保存できませんでした");
       }
 
-      setReportResult(smokingStatus);
+      setReportResult(smokingStatusValue);
+
+      await loadSmokingStatus(selectedRestaurant.id);
     } catch (err) {
       setReportError(err.message);
     } finally {
       setReportLoading(false);
     }
+  }
+
+  function formatTimeAgo(dateString) {
+    if (!dateString) {
+      return "";
+    }
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const difference = now.getTime() - date.getTime();
+
+    if (difference < 0) {
+      return "たった今";
+    }
+
+    const minutes = Math.floor(difference / 60000);
+    const hours = Math.floor(difference / 3600000);
+    const days = Math.floor(difference / 86400000);
+
+    if (minutes < 1) {
+      return "たった今";
+    }
+
+    if (minutes < 60) {
+      return `${minutes}分前`;
+    }
+
+    if (hours < 24) {
+      return `${hours}時間前`;
+    }
+
+    if (days < 30) {
+      return `${days}日前`;
+    }
+
+    return date.toLocaleDateString("ja-JP");
+  }
+
+  function latestReportText(status) {
+    if (status === "paper_ok") {
+      return "紙巻きが吸えた";
+    }
+
+    if (status === "heated_only") {
+      return "加熱式だけ吸えた";
+    }
+
+    if (status === "not_allowed") {
+      return "吸えなかった";
+    }
+
+    return "情報なし";
   }
 
   if (selectedRestaurant) {
@@ -163,6 +250,39 @@ export default function Home() {
             <div>
               <strong>掲載されている喫煙情報</strong>
               <p>{selectedRestaurant.smoking || "喫煙情報なし"}</p>
+            </div>
+          </div>
+
+          <div className="trustBox">
+            <div>
+              <strong>最近のユーザー確認</strong>
+
+              {statusLoading ? (
+                <p>確認中...</p>
+              ) : smokingStatus &&
+                smokingStatus.total > 0 &&
+                smokingStatus.latestReport ? (
+                <p>
+                  最終確認：
+                  {formatTimeAgo(
+                    smokingStatus.latestReport.created_at
+                  )}
+                  <br />
+                  最新報告：
+                  {latestReportText(
+                    smokingStatus.latestReport.smoking_status
+                  )}
+                  <br />
+                  直近{smokingStatus.total}件中
+                  {smokingStatus.smokedCount}件で吸えた
+                </p>
+              ) : (
+                <p>
+                  まだユーザーからの確認はありません。
+                  <br />
+                  最初の報告をお願いします。
+                </p>
+              )}
             </div>
           </div>
 
