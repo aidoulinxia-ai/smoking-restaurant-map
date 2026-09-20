@@ -9,12 +9,77 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [selectedFilter, setSelectedFilter] = useState("all");
+
   const [reportResult, setReportResult] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
   const [smokingStatus, setSmokingStatus] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
+
+  const filters = [
+    {
+      id: "paper",
+      icon: "🚬",
+      label: "紙巻きOK",
+    },
+    {
+      id: "heated",
+      icon: "🔥",
+      label: "加熱式OK",
+    },
+    {
+      id: "seat",
+      icon: "🪑",
+      label: "席で吸える",
+    },
+    {
+      id: "room",
+      icon: "🚪",
+      label: "喫煙室あり",
+    },
+  ];
+
+  function toggleFilter(filterId) {
+    setSelectedFilter((current) =>
+      current === filterId ? "all" : filterId
+    );
+  }
+
+  function matchesFilter(restaurant) {
+    if (restaurant.smokingType === "non_smoking") {
+      return false;
+    }
+
+    if (selectedFilter === "all") {
+      return (
+        restaurant.smokingType !== "non_smoking" &&
+        restaurant.smokingType !== "unknown"
+      );
+    }
+
+    if (selectedFilter === "paper") {
+      return restaurant.smokingType === "smoking_candidate";
+    }
+
+    if (selectedFilter === "heated") {
+      return (
+        restaurant.smokingType === "heated_candidate" ||
+        restaurant.smokingType === "smoking_candidate"
+      );
+    }
+
+    if (selectedFilter === "seat") {
+      return restaurant.smokingType === "smoking_candidate";
+    }
+
+    if (selectedFilter === "room") {
+      return restaurant.smokingType === "smoking_room";
+    }
+
+    return false;
+  }
 
   function searchRestaurants() {
     if (!navigator.geolocation) {
@@ -24,8 +89,9 @@ export default function Home() {
 
     setLoading(true);
     setError("");
-    setLocationStatus("現在地を取得中...");
+    setRestaurants([]);
     setSelectedRestaurant(null);
+    setLocationStatus("現在地を取得中...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -45,17 +111,17 @@ export default function Home() {
             throw new Error(data.error || "店舗検索に失敗しました");
           }
 
-          const smokingRestaurants = (data.restaurants || []).filter(
-            (restaurant) =>
-              restaurant.smoking &&
-              !restaurant.smoking.includes("全面禁煙")
-          );
+          const filteredRestaurants = (
+            data.restaurants || []
+          ).filter(matchesFilter);
 
-          setRestaurants(smokingRestaurants);
+          setRestaurants(filteredRestaurants);
 
-          if (smokingRestaurants.length === 0) {
+          if (filteredRestaurants.length === 0) {
             setError(
-              "現在地周辺に喫煙可能な候補店が見つかりませんでした"
+              selectedFilter === "all"
+                ? "現在地周辺に喫煙可能な候補店が見つかりませんでした"
+                : "選択した条件に合う候補店が見つかりませんでした"
             );
           }
         } catch (err) {
@@ -215,6 +281,22 @@ export default function Home() {
     return "情報なし";
   }
 
+  function smokingTypeText(restaurant) {
+    if (restaurant.smokingType === "smoking_candidate") {
+      return "喫煙可能候補";
+    }
+
+    if (restaurant.smokingType === "heated_candidate") {
+      return "加熱式たばこ候補";
+    }
+
+    if (restaurant.smokingType === "smoking_room") {
+      return "喫煙室あり";
+    }
+
+    return "喫煙情報あり";
+  }
+
   if (selectedRestaurant) {
     return (
       <main className="home">
@@ -233,7 +315,7 @@ export default function Home() {
         <section className="hero">
           <div className="location">
             <span>🚬</span>
-            <span>喫煙候補店</span>
+            <span>{smokingTypeText(selectedRestaurant)}</span>
           </div>
 
           <h1>{selectedRestaurant.name}</h1>
@@ -494,7 +576,39 @@ export default function Home() {
           <br />
           あなたの条件に合う飲食店を探せます。
         </p>
+      </section>
 
+      <section className="filterSection">
+        <p className="filterTitle">吸い方を選ぶ</p>
+
+        <div className="filterGrid">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              className="filterCard"
+              onClick={() => toggleFilter(filter.id)}
+              style={
+                selectedFilter === filter.id
+                  ? {
+                      background: "#151515",
+                      color: "#ffffff",
+                      borderColor: "#151515",
+                    }
+                  : undefined
+              }
+            >
+              <span className="filterIcon">{filter.icon}</span>
+              <span>{filter.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section
+        style={{
+          padding: "0 22px 30px",
+        }}
+      >
         <button
           className="searchButton"
           onClick={searchRestaurants}
@@ -506,7 +620,17 @@ export default function Home() {
             : "今すぐ吸える店を探す"}
         </button>
 
-        {error && <p>{error}</p>}
+        {error && (
+          <p
+            style={{
+              marginTop: "15px",
+              color: "#737373",
+              fontSize: "13px",
+            }}
+          >
+            {error}
+          </p>
+        )}
       </section>
 
       {restaurants.length > 0 && (
@@ -545,47 +669,17 @@ export default function Home() {
         </section>
       )}
 
-      {restaurants.length === 0 && !loading && !error && (
-        <>
-          <section className="filterSection">
-            <p className="filterTitle">吸い方から探す</p>
+      <section className="trustBox">
+        <div className="trustIcon">✓</div>
 
-            <div className="filterGrid">
-              <button className="filterCard">
-                <span className="filterIcon">🚬</span>
-                <span>紙巻きOK</span>
-              </button>
-
-              <button className="filterCard">
-                <span className="filterIcon">🔥</span>
-                <span>加熱式OK</span>
-              </button>
-
-              <button className="filterCard">
-                <span className="filterIcon">🪑</span>
-                <span>席で吸える</span>
-              </button>
-
-              <button className="filterCard">
-                <span className="filterIcon">🚪</span>
-                <span>喫煙室あり</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="trustBox">
-            <div className="trustIcon">✓</div>
-
-            <div>
-              <strong>新しい喫煙情報を優先</strong>
-              <p>
-                公式情報と最近のユーザー確認から、
-                今の喫煙状況を確認できます。
-              </p>
-            </div>
-          </section>
-        </>
-      )}
+        <div>
+          <strong>新しい喫煙情報を優先</strong>
+          <p>
+            公式情報と最近のユーザー確認から、
+            今の喫煙状況を確認できます。
+          </p>
+        </div>
+      </section>
 
       <nav className="bottomNav">
         <button className="navActive">
