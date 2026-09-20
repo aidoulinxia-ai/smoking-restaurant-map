@@ -264,19 +264,20 @@ export default function Home() {
       return "";
     }
 
-    const delta = 0.003;
+    const latDelta = 0.002;
+    const lngDelta = 0.003;
 
-    const left = lng - delta;
-    const bottom = lat - delta;
-    const right = lng + delta;
-    const top = lat + delta;
+    const left = lng - lngDelta;
+    const bottom = lat - latDelta;
+    const right = lng + lngDelta;
+    const top = lat + latDelta;
 
     const bbox = `${left},${bottom},${right},${top}`;
 
     return (
       "https://www.openstreetmap.org/export/embed.html" +
       `?bbox=${encodeURIComponent(bbox)}` +
-      `&layer=mapnik` +
+      "&layer=mapnik" +
       `&marker=${encodeURIComponent(`${lat},${lng}`)}`
     );
   }
@@ -371,18 +372,19 @@ export default function Home() {
           {mapUrl && (
             <div
               style={{
-                marginBottom: "22px",
+                marginBottom: "24px",
                 overflow: "hidden",
-                borderRadius: "18px",
-                border: "1px solid #e8e8e8",
-                background: "#f5f5f5",
+                borderRadius: "20px",
+                border: "1px solid #e4e4e4",
+                background: "#ffffff",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
               }}
             >
               <iframe
                 title={`${selectedRestaurant.name}の地図`}
                 src={mapUrl}
                 width="100%"
-                height="260"
+                height="320"
                 style={{
                   display: "block",
                   border: 0,
@@ -390,42 +392,56 @@ export default function Home() {
                 loading="lazy"
               />
 
-              {directionsUrl && (
-                <div
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#ffffff",
+                }}
+              >
+                <strong
                   style={{
-                    padding: "12px",
-                    background: "#ffffff",
+                    display: "block",
+                    fontSize: "15px",
+                    marginBottom: "5px",
                   }}
                 >
+                  📍 {selectedRestaurant.name}
+                </strong>
+
+                <p
+                  style={{
+                    margin: "0 0 14px",
+                    color: "#737373",
+                    fontSize: "12px",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  {selectedRestaurant.address || "住所情報なし"}
+                </p>
+
+                {directionsUrl && (
                   <a
                     href={directionsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
                       display: "flex",
-                      minHeight: "48px",
+                      minHeight: "50px",
                       alignItems: "center",
                       justifyContent: "center",
-                      borderRadius: "13px",
-                      background: "#f2f2f2",
-                      color: "#151515",
+                      borderRadius: "14px",
+                      background: "#151515",
+                      color: "#ffffff",
                       fontWeight: "800",
                       textDecoration: "none",
                     }}
                   >
                     📍 ここへ行く
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
-
-          <div className="trustBox">
-            <div>
-              <strong>住所</strong>
-              <p>{selectedRestaurant.address || "情報なし"}</p>
-            </div>
-          </div>
 
           <div className="trustBox">
             <div>
@@ -471,12 +487,7 @@ export default function Home() {
             </p>
 
             {!reportResult ? (
-              <div
-                style={{
-                  display: "grid",
-                  gap: "10px",
-                }}
-              >
+              <div style={{ display: "grid", gap: "10px" }}>
                 <button
                   className="filterCard"
                   style={{ width: "100%", minHeight: "60px" }}
