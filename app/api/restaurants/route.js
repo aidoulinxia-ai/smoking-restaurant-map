@@ -1,5 +1,38 @@
 import { NextResponse } from "next/server";
 
+function getSmokingType(smokingText) {
+  if (!smokingText) {
+    return "unknown";
+  }
+
+  if (smokingText.includes("全面禁煙")) {
+    return "non_smoking";
+  }
+
+  if (
+    smokingText.includes("禁煙席なし") ||
+    smokingText.includes("全席喫煙可")
+  ) {
+    return "smoking_candidate";
+  }
+
+  if (
+    smokingText.includes("加熱式") ||
+    smokingText.includes("加熱式たばこ")
+  ) {
+    return "heated_candidate";
+  }
+
+  if (
+    smokingText.includes("喫煙室") ||
+    smokingText.includes("喫煙専用室")
+  ) {
+    return "smoking_room";
+  }
+
+  return "unknown";
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -46,20 +79,28 @@ export async function GET(request) {
     const data = await response.json();
 
     const restaurants =
-      data.results?.shop?.map((shop) => ({
-        id: shop.id,
-        name: shop.name,
-        address: shop.address,
-        lat: shop.lat,
-        lng: shop.lng,
-        genre: shop.genre?.name || "",
-        budget: shop.budget?.name || "",
-        photo: shop.photo?.mobile?.l || "",
-        open: shop.open || "",
-        access: shop.access || "",
-        smoking: shop.non_smoking || "",
-        urls: shop.urls?.pc || "",
-      })) || [];
+      data.results?.shop?.map((shop) => {
+        const smokingText = shop.non_smoking || "";
+
+        return {
+          id: shop.id,
+          name: shop.name,
+          address: shop.address,
+          lat: shop.lat,
+          lng: shop.lng,
+          genre: shop.genre?.name || "",
+          budget: shop.budget?.name || "",
+          photo: shop.photo?.mobile?.l || "",
+          open: shop.open || "",
+          access: shop.access || "",
+
+          smoking: smokingText,
+
+          smokingType: getSmokingType(smokingText),
+
+          urls: shop.urls?.pc || "",
+        };
+      }) || [];
 
     return NextResponse.json({
       count: restaurants.length,
