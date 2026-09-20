@@ -8,7 +8,6 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [selectedFilter, setSelectedFilter] = useState("all");
 
   const [reportResult, setReportResult] = useState("");
@@ -19,26 +18,10 @@ export default function Home() {
   const [statusLoading, setStatusLoading] = useState(false);
 
   const filters = [
-    {
-      id: "paper",
-      icon: "🚬",
-      label: "紙巻きOK",
-    },
-    {
-      id: "heated",
-      icon: "🔥",
-      label: "加熱式OK",
-    },
-    {
-      id: "seat",
-      icon: "🪑",
-      label: "席で吸える",
-    },
-    {
-      id: "room",
-      icon: "🚪",
-      label: "喫煙室あり",
-    },
+    { id: "paper", icon: "🚬", label: "紙巻きOK" },
+    { id: "heated", icon: "🔥", label: "加熱式OK" },
+    { id: "seat", icon: "🪑", label: "席で吸える" },
+    { id: "room", icon: "🚪", label: "喫煙室あり" },
   ];
 
   function toggleFilter(filterId) {
@@ -220,7 +203,6 @@ export default function Home() {
       }
 
       setReportResult(smokingStatusValue);
-
       await loadSmokingStatus(selectedRestaurant.id);
     } catch (err) {
       setReportError(err.message);
@@ -230,53 +212,30 @@ export default function Home() {
   }
 
   function formatTimeAgo(dateString) {
-    if (!dateString) {
-      return "";
-    }
+    if (!dateString) return "";
 
     const date = new Date(dateString);
     const now = new Date();
     const difference = now.getTime() - date.getTime();
 
-    if (difference < 0) {
-      return "たった今";
-    }
+    if (difference < 0) return "たった今";
 
     const minutes = Math.floor(difference / 60000);
     const hours = Math.floor(difference / 3600000);
     const days = Math.floor(difference / 86400000);
 
-    if (minutes < 1) {
-      return "たった今";
-    }
-
-    if (minutes < 60) {
-      return `${minutes}分前`;
-    }
-
-    if (hours < 24) {
-      return `${hours}時間前`;
-    }
-
-    if (days < 30) {
-      return `${days}日前`;
-    }
+    if (minutes < 1) return "たった今";
+    if (minutes < 60) return `${minutes}分前`;
+    if (hours < 24) return `${hours}時間前`;
+    if (days < 30) return `${days}日前`;
 
     return date.toLocaleDateString("ja-JP");
   }
 
   function latestReportText(status) {
-    if (status === "paper_ok") {
-      return "紙巻きが吸えた";
-    }
-
-    if (status === "heated_only") {
-      return "加熱式だけ吸えた";
-    }
-
-    if (status === "not_allowed") {
-      return "吸えなかった";
-    }
+    if (status === "paper_ok") return "紙巻きが吸えた";
+    if (status === "heated_only") return "加熱式だけ吸えた";
+    if (status === "not_allowed") return "吸えなかった";
 
     return "情報なし";
   }
@@ -297,7 +256,48 @@ export default function Home() {
     return "喫煙情報あり";
   }
 
+  function getMapUrl(restaurant) {
+    const lat = Number(restaurant.lat);
+    const lng = Number(restaurant.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return "";
+    }
+
+    const delta = 0.003;
+
+    const left = lng - delta;
+    const bottom = lat - delta;
+    const right = lng + delta;
+    const top = lat + delta;
+
+    const bbox = `${left},${bottom},${right},${top}`;
+
+    return (
+      "https://www.openstreetmap.org/export/embed.html" +
+      `?bbox=${encodeURIComponent(bbox)}` +
+      `&layer=mapnik` +
+      `&marker=${encodeURIComponent(`${lat},${lng}`)}`
+    );
+  }
+
+  function getDirectionsUrl(restaurant) {
+    const lat = Number(restaurant.lat);
+    const lng = Number(restaurant.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return "";
+    }
+
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      `${lat},${lng}`
+    )}`;
+  }
+
   if (selectedRestaurant) {
+    const mapUrl = getMapUrl(selectedRestaurant);
+    const directionsUrl = getDirectionsUrl(selectedRestaurant);
+
     return (
       <main className="home">
         <header className="header">
@@ -368,6 +368,58 @@ export default function Home() {
             </div>
           </div>
 
+          {mapUrl && (
+            <div
+              style={{
+                marginBottom: "22px",
+                overflow: "hidden",
+                borderRadius: "18px",
+                border: "1px solid #e8e8e8",
+                background: "#f5f5f5",
+              }}
+            >
+              <iframe
+                title={`${selectedRestaurant.name}の地図`}
+                src={mapUrl}
+                width="100%"
+                height="260"
+                style={{
+                  display: "block",
+                  border: 0,
+                }}
+                loading="lazy"
+              />
+
+              {directionsUrl && (
+                <div
+                  style={{
+                    padding: "12px",
+                    background: "#ffffff",
+                  }}
+                >
+                  <a
+                    href={directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      minHeight: "48px",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "13px",
+                      background: "#f2f2f2",
+                      color: "#151515",
+                      fontWeight: "800",
+                      textDecoration: "none",
+                    }}
+                  >
+                    📍 ここへ行く
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="trustBox">
             <div>
               <strong>住所</strong>
@@ -427,10 +479,7 @@ export default function Home() {
               >
                 <button
                   className="filterCard"
-                  style={{
-                    width: "100%",
-                    minHeight: "60px",
-                  }}
+                  style={{ width: "100%", minHeight: "60px" }}
                   disabled={reportLoading}
                   onClick={() => submitSmokingReport("paper_ok")}
                 >
@@ -439,24 +488,22 @@ export default function Home() {
 
                 <button
                   className="filterCard"
-                  style={{
-                    width: "100%",
-                    minHeight: "60px",
-                  }}
+                  style={{ width: "100%", minHeight: "60px" }}
                   disabled={reportLoading}
-                  onClick={() => submitSmokingReport("heated_only")}
+                  onClick={() =>
+                    submitSmokingReport("heated_only")
+                  }
                 >
                   <span>🔥 加熱式だけ吸えた</span>
                 </button>
 
                 <button
                   className="filterCard"
-                  style={{
-                    width: "100%",
-                    minHeight: "60px",
-                  }}
+                  style={{ width: "100%", minHeight: "60px" }}
                   disabled={reportLoading}
-                  onClick={() => submitSmokingReport("not_allowed")}
+                  onClick={() =>
+                    submitSmokingReport("not_allowed")
+                  }
                 >
                   <span>🚭 吸えなかった</span>
                 </button>
@@ -604,11 +651,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        style={{
-          padding: "0 22px 30px",
-        }}
-      >
+      <section style={{ padding: "0 22px 30px" }}>
         <button
           className="searchButton"
           onClick={searchRestaurants}
