@@ -8,7 +8,10 @@ export default function Home() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const [reportResult, setReportResult] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   function searchRestaurants() {
     if (!navigator.geolocation) {
@@ -21,6 +24,7 @@ export default function Home() {
     setLocationStatus("現在地を取得中...");
     setSelectedRestaurant(null);
     setReportResult("");
+    setReportError("");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -75,6 +79,7 @@ export default function Home() {
   function openRestaurant(restaurant) {
     setSelectedRestaurant(restaurant);
     setReportResult("");
+    setReportError("");
 
     window.scrollTo({
       top: 0,
@@ -85,10 +90,42 @@ export default function Home() {
   function closeRestaurant() {
     setSelectedRestaurant(null);
     setReportResult("");
+    setReportError("");
   }
 
-  function selectReport(result) {
-    setReportResult(result);
+  async function submitSmokingReport(smokingStatus) {
+    if (!selectedRestaurant || reportLoading) {
+      return;
+    }
+
+    setReportLoading(true);
+    setReportError("");
+
+    try {
+      const response = await fetch("/api/smoking-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantId: selectedRestaurant.id,
+          restaurantName: selectedRestaurant.name,
+          smokingStatus,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "報告を保存できませんでした");
+      }
+
+      setReportResult(smokingStatus);
+    } catch (err) {
+      setReportError(err.message);
+    } finally {
+      setReportLoading(false);
+    }
   }
 
   if (selectedRestaurant) {
@@ -125,9 +162,7 @@ export default function Home() {
 
             <div>
               <strong>掲載されている喫煙情報</strong>
-              <p>
-                {selectedRestaurant.smoking || "喫煙情報なし"}
-              </p>
+              <p>{selectedRestaurant.smoking || "喫煙情報なし"}</p>
             </div>
           </div>
 
@@ -194,7 +229,8 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  onClick={() => selectReport("paper_ok")}
+                  disabled={reportLoading}
+                  onClick={() => submitSmokingReport("paper_ok")}
                 >
                   <span>🚬 紙巻き吸えた</span>
                 </button>
@@ -205,7 +241,8 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  onClick={() => selectReport("heated_only")}
+                  disabled={reportLoading}
+                  onClick={() => submitSmokingReport("heated_only")}
                 >
                   <span>🔥 加熱式だけ吸えた</span>
                 </button>
@@ -216,10 +253,35 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  onClick={() => selectReport("not_allowed")}
+                  disabled={reportLoading}
+                  onClick={() => submitSmokingReport("not_allowed")}
                 >
                   <span>🚭 吸えなかった</span>
                 </button>
+
+                {reportLoading && (
+                  <p
+                    style={{
+                      margin: "5px 0 0",
+                      color: "#737373",
+                      fontSize: "13px",
+                    }}
+                  >
+                    保存中...
+                  </p>
+                )}
+
+                {reportError && (
+                  <p
+                    style={{
+                      margin: "5px 0 0",
+                      color: "#b00020",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {reportError}
+                  </p>
+                )}
               </div>
             ) : (
               <div
@@ -230,7 +292,7 @@ export default function Home() {
                   textAlign: "center",
                 }}
               >
-                <strong>✓ 回答ありがとう</strong>
+                <strong>✓ 報告ありがとう</strong>
 
                 <p
                   style={{
@@ -239,7 +301,7 @@ export default function Home() {
                     fontSize: "13px",
                   }}
                 >
-                  次のステップで、この回答を保存できるようにします。
+                  最新の喫煙情報として保存しました。
                 </p>
               </div>
             )}
