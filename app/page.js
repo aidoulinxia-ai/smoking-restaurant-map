@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [locationStatus, setLocationStatus] = useState("現在地から探す");
+  const [userLocation, setUserLocation] = useState(null);
+
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,8 @@ export default function Home() {
       }
 
       const restaurant = restaurants.find(
-        (item) => String(item.id) === String(event.data.restaurantId)
+        (item) =>
+          String(item.id) === String(event.data.restaurantId)
       );
 
       if (restaurant) {
@@ -108,6 +111,11 @@ export default function Home() {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
 
+          setUserLocation({
+            lat,
+            lng,
+          });
+
           setLocationStatus("現在地を取得しました");
 
           const response = await fetch(
@@ -117,7 +125,9 @@ export default function Home() {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || "店舗検索に失敗しました");
+            throw new Error(
+              data.error || "店舗検索に失敗しました"
+            );
           }
 
           const filteredRestaurants = (
@@ -140,7 +150,9 @@ export default function Home() {
         }
       },
       () => {
-        setLocationStatus("現在地の利用を許可してください");
+        setLocationStatus(
+          "現在地の利用を許可してください"
+        );
         setError("現在地を取得できませんでした");
         setLoading(false);
       },
@@ -225,7 +237,9 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "報告を保存できませんでした");
+        throw new Error(
+          data.error || "報告を保存できませんでした"
+        );
       }
 
       setReportResult(smokingStatusValue);
@@ -259,9 +273,17 @@ export default function Home() {
   }
 
   function latestReportText(status) {
-    if (status === "paper_ok") return "紙巻きが吸えた";
-    if (status === "heated_only") return "加熱式だけ吸えた";
-    if (status === "not_allowed") return "吸えなかった";
+    if (status === "paper_ok") {
+      return "紙巻きが吸えた";
+    }
+
+    if (status === "heated_only") {
+      return "加熱式だけ吸えた";
+    }
+
+    if (status === "not_allowed") {
+      return "吸えなかった";
+    }
 
     return "情報なし";
   }
@@ -286,7 +308,10 @@ export default function Home() {
     const lat = Number(restaurant.lat);
     const lng = Number(restaurant.lng);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
       return "";
     }
 
@@ -296,27 +321,40 @@ export default function Home() {
   }
 
   function getResultsMapUrl() {
-    if (restaurants.length === 0) {
+    if (
+      restaurants.length === 0 ||
+      !userLocation
+    ) {
       return "";
     }
 
-    const mapRestaurants = restaurants.map((restaurant) => ({
-      id: restaurant.id,
-      name: restaurant.name,
-      lat: restaurant.lat,
-      lng: restaurant.lng,
-    }));
+    const mapRestaurants = restaurants.map(
+      (restaurant) => ({
+        id: restaurant.id,
+        name: restaurant.name,
+        lat: restaurant.lat,
+        lng: restaurant.lng,
+      })
+    );
 
-    return `/api/results-map?restaurants=${encodeURIComponent(
-      JSON.stringify(mapRestaurants)
-    )}`;
+    return (
+      `/api/results-map` +
+      `?lat=${encodeURIComponent(userLocation.lat)}` +
+      `&lng=${encodeURIComponent(userLocation.lng)}` +
+      `&restaurants=${encodeURIComponent(
+        JSON.stringify(mapRestaurants)
+      )}`
+    );
   }
 
   function getDirectionsUrl(restaurant) {
     const lat = Number(restaurant.lat);
     const lng = Number(restaurant.lng);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
       return "";
     }
 
@@ -327,7 +365,8 @@ export default function Home() {
 
   if (selectedRestaurant) {
     const mapUrl = getMapUrl(selectedRestaurant);
-    const directionsUrl = getDirectionsUrl(selectedRestaurant);
+    const directionsUrl =
+      getDirectionsUrl(selectedRestaurant);
 
     return (
       <main className="home">
@@ -346,13 +385,16 @@ export default function Home() {
         <section className="hero">
           <div className="location">
             <span>🚬</span>
-            <span>{smokingTypeText(selectedRestaurant)}</span>
+            <span>
+              {smokingTypeText(selectedRestaurant)}
+            </span>
           </div>
 
           <h1>{selectedRestaurant.name}</h1>
 
           <p className="description">
-            {selectedRestaurant.genre || "ジャンル情報なし"}
+            {selectedRestaurant.genre ||
+              "ジャンル情報なし"}
           </p>
         </section>
 
@@ -361,14 +403,22 @@ export default function Home() {
             <div className="trustIcon">✓</div>
 
             <div>
-              <strong>掲載されている喫煙情報</strong>
-              <p>{selectedRestaurant.smoking || "喫煙情報なし"}</p>
+              <strong>
+                掲載されている喫煙情報
+              </strong>
+
+              <p>
+                {selectedRestaurant.smoking ||
+                  "喫煙情報なし"}
+              </p>
             </div>
           </div>
 
           <div className="trustBox">
             <div>
-              <strong>最近のユーザー確認</strong>
+              <strong>
+                最近のユーザー確認
+              </strong>
 
               {statusLoading ? (
                 <p>確認中...</p>
@@ -378,16 +428,21 @@ export default function Home() {
                 <p>
                   最終確認：
                   {formatTimeAgo(
-                    smokingStatus.latestReport.created_at
+                    smokingStatus.latestReport
+                      .created_at
                   )}
                   <br />
                   最新報告：
                   {latestReportText(
-                    smokingStatus.latestReport.smoking_status
+                    smokingStatus.latestReport
+                      .smoking_status
                   )}
                   <br />
-                  直近{smokingStatus.total}件中
-                  {smokingStatus.smokedCount}件で吸えた
+                  直近
+                  {smokingStatus.total}
+                  件中
+                  {smokingStatus.smokedCount}
+                  件で吸えた
                 </p>
               ) : (
                 <p>
@@ -405,9 +460,11 @@ export default function Home() {
                 marginBottom: "24px",
                 overflow: "hidden",
                 borderRadius: "20px",
-                border: "1px solid #e4e4e4",
+                border:
+                  "1px solid #e4e4e4",
                 background: "#ffffff",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                boxShadow:
+                  "0 8px 24px rgba(0,0,0,0.08)",
               }}
             >
               <iframe
@@ -448,7 +505,8 @@ export default function Home() {
                     lineHeight: "1.6",
                   }}
                 >
-                  {selectedRestaurant.address || "住所情報なし"}
+                  {selectedRestaurant.address ||
+                    "住所情報なし"}
                 </p>
 
                 {directionsUrl && (
@@ -460,7 +518,8 @@ export default function Home() {
                       display: "flex",
                       minHeight: "50px",
                       alignItems: "center",
-                      justifyContent: "center",
+                      justifyContent:
+                        "center",
                       borderRadius: "14px",
                       background: "#151515",
                       color: "#ffffff",
@@ -478,14 +537,20 @@ export default function Home() {
           <div className="trustBox">
             <div>
               <strong>営業時間</strong>
-              <p>{selectedRestaurant.open || "情報なし"}</p>
+              <p>
+                {selectedRestaurant.open ||
+                  "情報なし"}
+              </p>
             </div>
           </div>
 
           <div className="trustBox">
             <div>
               <strong>予算</strong>
-              <p>{selectedRestaurant.budget || "情報なし"}</p>
+              <p>
+                {selectedRestaurant.budget ||
+                  "情報なし"}
+              </p>
             </div>
           </div>
 
@@ -519,36 +584,64 @@ export default function Home() {
             </p>
 
             {!reportResult ? (
-              <div style={{ display: "grid", gap: "10px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "10px",
+                }}
+              >
                 <button
                   className="filterCard"
-                  style={{ width: "100%", minHeight: "60px" }}
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
                   disabled={reportLoading}
-                  onClick={() => submitSmokingReport("paper_ok")}
+                  onClick={() =>
+                    submitSmokingReport(
+                      "paper_ok"
+                    )
+                  }
                 >
-                  <span>🚬 紙巻き吸えた</span>
+                  <span>
+                    🚬 紙巻き吸えた
+                  </span>
                 </button>
 
                 <button
                   className="filterCard"
-                  style={{ width: "100%", minHeight: "60px" }}
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
                   disabled={reportLoading}
                   onClick={() =>
-                    submitSmokingReport("heated_only")
+                    submitSmokingReport(
+                      "heated_only"
+                    )
                   }
                 >
-                  <span>🔥 加熱式だけ吸えた</span>
+                  <span>
+                    🔥 加熱式だけ吸えた
+                  </span>
                 </button>
 
                 <button
                   className="filterCard"
-                  style={{ width: "100%", minHeight: "60px" }}
+                  style={{
+                    width: "100%",
+                    minHeight: "60px",
+                  }}
                   disabled={reportLoading}
                   onClick={() =>
-                    submitSmokingReport("not_allowed")
+                    submitSmokingReport(
+                      "not_allowed"
+                    )
                   }
                 >
-                  <span>🚭 吸えなかった</span>
+                  <span>
+                    🚭 吸えなかった
+                  </span>
                 </button>
 
                 {reportLoading && (
@@ -584,7 +677,9 @@ export default function Home() {
                   textAlign: "center",
                 }}
               >
-                <strong>✓ 報告ありがとう</strong>
+                <strong>
+                  ✓ 報告ありがとう
+                </strong>
 
                 <p
                   style={{
@@ -612,7 +707,10 @@ export default function Home() {
         </section>
 
         <nav className="bottomNav">
-          <button className="navActive" onClick={closeRestaurant}>
+          <button
+            className="navActive"
+            onClick={closeRestaurant}
+          >
             <span>←</span>
             <small>戻る</small>
           </button>
@@ -641,15 +739,23 @@ export default function Home() {
   return (
     <main className="home">
       <header className="header">
-        <div className="logo">SMOKE MAP</div>
+        <div className="logo">
+          SMOKE MAP
+        </div>
 
-        <button className="menuButton" aria-label="メニュー">
+        <button
+          className="menuButton"
+          aria-label="メニュー"
+        >
           ☰
         </button>
       </header>
 
       <section className="hero">
-        <button className="location" onClick={searchRestaurants}>
+        <button
+          className="location"
+          onClick={searchRestaurants}
+        >
           <span>📍</span>
           <span>{locationStatus}</span>
         </button>
@@ -668,38 +774,54 @@ export default function Home() {
       </section>
 
       <section className="filterSection">
-        <p className="filterTitle">吸い方を選ぶ</p>
+        <p className="filterTitle">
+          吸い方を選ぶ
+        </p>
 
         <div className="filterGrid">
           {filters.map((filter) => (
             <button
               key={filter.id}
               className="filterCard"
-              onClick={() => toggleFilter(filter.id)}
+              onClick={() =>
+                toggleFilter(filter.id)
+              }
               style={
                 selectedFilter === filter.id
                   ? {
-                      background: "#151515",
+                      background:
+                        "#151515",
                       color: "#ffffff",
-                      borderColor: "#151515",
+                      borderColor:
+                        "#151515",
                     }
                   : undefined
               }
             >
-              <span className="filterIcon">{filter.icon}</span>
-              <span>{filter.label}</span>
+              <span className="filterIcon">
+                {filter.icon}
+              </span>
+
+              <span>
+                {filter.label}
+              </span>
             </button>
           ))}
         </div>
       </section>
 
-      <section style={{ padding: "0 22px 30px" }}>
+      <section
+        style={{
+          padding: "0 22px 30px",
+        }}
+      >
         <button
           className="searchButton"
           onClick={searchRestaurants}
           disabled={loading}
         >
           <span>🔍</span>
+
           {loading
             ? "近くのお店を検索中..."
             : "今すぐ吸える店を探す"}
@@ -721,7 +843,8 @@ export default function Home() {
       {restaurants.length > 0 && (
         <section className="filterSection">
           <p className="filterTitle">
-            喫煙候補（{restaurants.length}件）
+            喫煙候補（
+            {restaurants.length}件）
           </p>
 
           {resultsMapUrl && (
@@ -730,9 +853,11 @@ export default function Home() {
                 marginBottom: "24px",
                 overflow: "hidden",
                 borderRadius: "20px",
-                border: "1px solid #e4e4e4",
+                border:
+                  "1px solid #e4e4e4",
                 background: "#ffffff",
-                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                boxShadow:
+                  "0 8px 24px rgba(0,0,0,0.08)",
               }}
             >
               <iframe
@@ -751,40 +876,55 @@ export default function Home() {
           )}
 
           <div>
-            {restaurants.map((restaurant) => (
-              <button
-                className="trustBox"
-                key={restaurant.id}
-                onClick={() => openRestaurant(restaurant)}
-                style={{
-                  width: "calc(100% - 44px)",
-                  border: "none",
-                  textAlign: "left",
-                  cursor: "pointer",
-                }}
-              >
-                <div>
-                  <strong>{restaurant.name}</strong>
+            {restaurants.map(
+              (restaurant) => (
+                <button
+                  className="trustBox"
+                  key={restaurant.id}
+                  onClick={() =>
+                    openRestaurant(
+                      restaurant
+                    )
+                  }
+                  style={{
+                    width:
+                      "calc(100% - 44px)",
+                    border: "none",
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div>
+                    <strong>
+                      {restaurant.name}
+                    </strong>
 
-                  <p>
-                    {restaurant.genre}
-                    <br />
-                    🚬 {restaurant.smoking}
-                    <br />
-                    {restaurant.address}
-                  </p>
-                </div>
-              </button>
-            ))}
+                    <p>
+                      {restaurant.genre}
+                      <br />
+                      🚬{" "}
+                      {restaurant.smoking}
+                      <br />
+                      {restaurant.address}
+                    </p>
+                  </div>
+                </button>
+              )
+            )}
           </div>
         </section>
       )}
 
       <section className="trustBox">
-        <div className="trustIcon">✓</div>
+        <div className="trustIcon">
+          ✓
+        </div>
 
         <div>
-          <strong>新しい喫煙情報を優先</strong>
+          <strong>
+            新しい喫煙情報を優先
+          </strong>
+
           <p>
             公式情報と最近のユーザー確認から、
             今の喫煙状況を確認できます。
