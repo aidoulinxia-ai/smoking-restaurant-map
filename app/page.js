@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [locationStatus, setLocationStatus] = useState("現在地から探す");
@@ -23,6 +23,32 @@ export default function Home() {
     { id: "seat", icon: "🪑", label: "席で吸える" },
     { id: "room", icon: "🚪", label: "喫煙室あり" },
   ];
+
+  useEffect(() => {
+    function handleMapMessage(event) {
+      if (event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (event.data?.type !== "SMOKE_MAP_RESTAURANT") {
+        return;
+      }
+
+      const restaurant = restaurants.find(
+        (item) => String(item.id) === String(event.data.restaurantId)
+      );
+
+      if (restaurant) {
+        openRestaurant(restaurant);
+      }
+    }
+
+    window.addEventListener("message", handleMapMessage);
+
+    return () => {
+      window.removeEventListener("message", handleMapMessage);
+    };
+  }, [restaurants]);
 
   function toggleFilter(filterId) {
     setSelectedFilter((current) =>
@@ -267,6 +293,23 @@ export default function Home() {
     return `/api/google-map?lat=${encodeURIComponent(
       lat
     )}&lng=${encodeURIComponent(lng)}`;
+  }
+
+  function getResultsMapUrl() {
+    if (restaurants.length === 0) {
+      return "";
+    }
+
+    const mapRestaurants = restaurants.map((restaurant) => ({
+      id: restaurant.id,
+      name: restaurant.name,
+      lat: restaurant.lat,
+      lng: restaurant.lng,
+    }));
+
+    return `/api/results-map?restaurants=${encodeURIComponent(
+      JSON.stringify(mapRestaurants)
+    )}`;
   }
 
   function getDirectionsUrl(restaurant) {
@@ -593,6 +636,8 @@ export default function Home() {
     );
   }
 
+  const resultsMapUrl = getResultsMapUrl();
+
   return (
     <main className="home">
       <header className="header">
@@ -678,6 +723,32 @@ export default function Home() {
           <p className="filterTitle">
             喫煙候補（{restaurants.length}件）
           </p>
+
+          {resultsMapUrl && (
+            <div
+              style={{
+                marginBottom: "24px",
+                overflow: "hidden",
+                borderRadius: "20px",
+                border: "1px solid #e4e4e4",
+                background: "#ffffff",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+              }}
+            >
+              <iframe
+                title="喫煙候補店舗マップ"
+                src={resultsMapUrl}
+                width="100%"
+                height="360"
+                style={{
+                  display: "block",
+                  border: 0,
+                }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
+          )}
 
           <div>
             {restaurants.map((restaurant) => (
