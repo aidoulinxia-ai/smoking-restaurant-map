@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Home() {
   const [locationStatus, setLocationStatus] = useState("現在地から探す");
@@ -11,6 +11,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
+
+  const [sortType, setSortType] = useState("distance");
 
   const [reportResult, setReportResult] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
@@ -93,6 +95,99 @@ export default function Home() {
     return false;
   }
 
+  function calculateDistance(lat1, lng1, lat2, lng2) {
+    const toRadians = (value) => (value * Math.PI) / 180;
+
+    const earthRadius = 6371000;
+
+    const latitude1 = toRadians(lat1);
+    const latitude2 = toRadians(lat2);
+    const latitudeDifference = toRadians(lat2 - lat1);
+    const longitudeDifference = toRadians(lng2 - lng1);
+
+    const a =
+      Math.sin(latitudeDifference / 2) *
+        Math.sin(latitudeDifference / 2) +
+      Math.cos(latitude1) *
+        Math.cos(latitude2) *
+        Math.sin(longitudeDifference / 2) *
+        Math.sin(longitudeDifference / 2);
+
+    const c =
+      2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  function getRestaurantDistance(restaurant) {
+    if (!userLocation) {
+      return Infinity;
+    }
+
+    const lat = Number(restaurant.lat);
+    const lng = Number(restaurant.lng);
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      return Infinity;
+    }
+
+    return calculateDistance(
+      Number(userLocation.lat),
+      Number(userLocation.lng),
+      lat,
+      lng
+    );
+  }
+
+  function formatDistance(distance) {
+    if (!Number.isFinite(distance)) {
+      return "";
+    }
+
+    if (distance < 1000) {
+      return `${Math.round(distance)}m`;
+    }
+
+    return `${(distance / 1000).toFixed(1)}km`;
+  }
+
+  function getBudgetValue(budgetText) {
+    if (!budgetText) {
+      return Infinity;
+    }
+
+    const numbers = String(budgetText)
+      .replace(/,/g, "")
+      .match(/\d+/g);
+
+    if (!numbers || numbers.length === 0) {
+      return Infinity;
+    }
+
+    return Number(numbers[0]);
+  }
+
+  const sortedRestaurants = useMemo(() => {
+    const copiedRestaurants = [...restaurants];
+
+    if (sortType === "price") {
+      return copiedRestaurants.sort(
+        (a, b) =>
+          getBudgetValue(a.budget) -
+          getBudgetValue(b.budget)
+      );
+    }
+
+    return copiedRestaurants.sort(
+      (a, b) =>
+        getRestaurantDistance(a) -
+        getRestaurantDistance(b)
+    );
+  }, [restaurants, sortType, userLocation]);
+
   function searchRestaurants() {
     if (!navigator.geolocation) {
       setError("この端末では現在地を取得できません");
@@ -150,9 +245,7 @@ export default function Home() {
         }
       },
       () => {
-        setLocationStatus(
-          "現在地の利用を許可してください"
-        );
+        setLocationStatus("現在地の利用を許可してください");
         setError("現在地を取得できませんでした");
         setLoading(false);
       },
@@ -393,8 +486,7 @@ export default function Home() {
           <h1>{selectedRestaurant.name}</h1>
 
           <p className="description">
-            {selectedRestaurant.genre ||
-              "ジャンル情報なし"}
+            {selectedRestaurant.genre || "ジャンル情報なし"}
           </p>
         </section>
 
@@ -403,22 +495,17 @@ export default function Home() {
             <div className="trustIcon">✓</div>
 
             <div>
-              <strong>
-                掲載されている喫煙情報
-              </strong>
+              <strong>掲載されている喫煙情報</strong>
 
               <p>
-                {selectedRestaurant.smoking ||
-                  "喫煙情報なし"}
+                {selectedRestaurant.smoking || "喫煙情報なし"}
               </p>
             </div>
           </div>
 
           <div className="trustBox">
             <div>
-              <strong>
-                最近のユーザー確認
-              </strong>
+              <strong>最近のユーザー確認</strong>
 
               {statusLoading ? (
                 <p>確認中...</p>
@@ -428,21 +515,16 @@ export default function Home() {
                 <p>
                   最終確認：
                   {formatTimeAgo(
-                    smokingStatus.latestReport
-                      .created_at
+                    smokingStatus.latestReport.created_at
                   )}
                   <br />
                   最新報告：
                   {latestReportText(
-                    smokingStatus.latestReport
-                      .smoking_status
+                    smokingStatus.latestReport.smoking_status
                   )}
                   <br />
-                  直近
-                  {smokingStatus.total}
-                  件中
-                  {smokingStatus.smokedCount}
-                  件で吸えた
+                  直近{smokingStatus.total}件中
+                  {smokingStatus.smokedCount}件で吸えた
                 </p>
               ) : (
                 <p>
@@ -460,11 +542,9 @@ export default function Home() {
                 marginBottom: "24px",
                 overflow: "hidden",
                 borderRadius: "20px",
-                border:
-                  "1px solid #e4e4e4",
+                border: "1px solid #e4e4e4",
                 background: "#ffffff",
-                boxShadow:
-                  "0 8px 24px rgba(0,0,0,0.08)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
               }}
             >
               <iframe
@@ -505,8 +585,7 @@ export default function Home() {
                     lineHeight: "1.6",
                   }}
                 >
-                  {selectedRestaurant.address ||
-                    "住所情報なし"}
+                  {selectedRestaurant.address || "住所情報なし"}
                 </p>
 
                 {directionsUrl && (
@@ -518,8 +597,7 @@ export default function Home() {
                       display: "flex",
                       minHeight: "50px",
                       alignItems: "center",
-                      justifyContent:
-                        "center",
+                      justifyContent: "center",
                       borderRadius: "14px",
                       background: "#151515",
                       color: "#ffffff",
@@ -537,20 +615,14 @@ export default function Home() {
           <div className="trustBox">
             <div>
               <strong>営業時間</strong>
-              <p>
-                {selectedRestaurant.open ||
-                  "情報なし"}
-              </p>
+              <p>{selectedRestaurant.open || "情報なし"}</p>
             </div>
           </div>
 
           <div className="trustBox">
             <div>
               <strong>予算</strong>
-              <p>
-                {selectedRestaurant.budget ||
-                  "情報なし"}
-              </p>
+              <p>{selectedRestaurant.budget || "情報なし"}</p>
             </div>
           </div>
 
@@ -598,14 +670,10 @@ export default function Home() {
                   }}
                   disabled={reportLoading}
                   onClick={() =>
-                    submitSmokingReport(
-                      "paper_ok"
-                    )
+                    submitSmokingReport("paper_ok")
                   }
                 >
-                  <span>
-                    🚬 紙巻き吸えた
-                  </span>
+                  <span>🚬 紙巻き吸えた</span>
                 </button>
 
                 <button
@@ -616,14 +684,10 @@ export default function Home() {
                   }}
                   disabled={reportLoading}
                   onClick={() =>
-                    submitSmokingReport(
-                      "heated_only"
-                    )
+                    submitSmokingReport("heated_only")
                   }
                 >
-                  <span>
-                    🔥 加熱式だけ吸えた
-                  </span>
+                  <span>🔥 加熱式だけ吸えた</span>
                 </button>
 
                 <button
@@ -634,14 +698,10 @@ export default function Home() {
                   }}
                   disabled={reportLoading}
                   onClick={() =>
-                    submitSmokingReport(
-                      "not_allowed"
-                    )
+                    submitSmokingReport("not_allowed")
                   }
                 >
-                  <span>
-                    🚭 吸えなかった
-                  </span>
+                  <span>🚭 吸えなかった</span>
                 </button>
 
                 {reportLoading && (
@@ -677,9 +737,7 @@ export default function Home() {
                   textAlign: "center",
                 }}
               >
-                <strong>
-                  ✓ 報告ありがとう
-                </strong>
+                <strong>✓ 報告ありがとう</strong>
 
                 <p
                   style={{
@@ -739,9 +797,7 @@ export default function Home() {
   return (
     <main className="home">
       <header className="header">
-        <div className="logo">
-          SMOKE MAP
-        </div>
+        <div className="logo">SMOKE MAP</div>
 
         <button
           className="menuButton"
@@ -774,9 +830,7 @@ export default function Home() {
       </section>
 
       <section className="filterSection">
-        <p className="filterTitle">
-          吸い方を選ぶ
-        </p>
+        <p className="filterTitle">吸い方を選ぶ</p>
 
         <div className="filterGrid">
           {filters.map((filter) => (
@@ -789,11 +843,9 @@ export default function Home() {
               style={
                 selectedFilter === filter.id
                   ? {
-                      background:
-                        "#151515",
+                      background: "#151515",
                       color: "#ffffff",
-                      borderColor:
-                        "#151515",
+                      borderColor: "#151515",
                     }
                   : undefined
               }
@@ -802,9 +854,7 @@ export default function Home() {
                 {filter.icon}
               </span>
 
-              <span>
-                {filter.label}
-              </span>
+              <span>{filter.label}</span>
             </button>
           ))}
         </div>
@@ -842,10 +892,50 @@ export default function Home() {
 
       {restaurants.length > 0 && (
         <section className="filterSection">
-          <p className="filterTitle">
-            喫煙候補（
-            {restaurants.length}件）
-          </p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginBottom: "14px",
+            }}
+          >
+            <p
+              className="filterTitle"
+              style={{
+                margin: 0,
+              }}
+            >
+              喫煙候補（{restaurants.length}件）
+            </p>
+
+            <select
+              value={sortType}
+              onChange={(event) =>
+                setSortType(event.target.value)
+              }
+              aria-label="並び替え"
+              style={{
+                minHeight: "42px",
+                padding: "0 12px",
+                border: "1px solid #dddddd",
+                borderRadius: "12px",
+                background: "#ffffff",
+                color: "#151515",
+                fontSize: "13px",
+                fontWeight: "700",
+              }}
+            >
+              <option value="distance">
+                📍 近い順
+              </option>
+
+              <option value="price">
+                💰 安い順
+              </option>
+            </select>
+          </div>
 
           {resultsMapUrl && (
             <div
@@ -853,11 +943,9 @@ export default function Home() {
                 marginBottom: "24px",
                 overflow: "hidden",
                 borderRadius: "20px",
-                border:
-                  "1px solid #e4e4e4",
+                border: "1px solid #e4e4e4",
                 background: "#ffffff",
-                boxShadow:
-                  "0 8px 24px rgba(0,0,0,0.08)",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
               }}
             >
               <iframe
@@ -876,54 +964,57 @@ export default function Home() {
           )}
 
           <div>
-            {restaurants.map(
-              (restaurant) => (
-                <button
-                  className="trustBox"
-                  key={restaurant.id}
-                  onClick={() =>
-                    openRestaurant(
-                      restaurant
-                    )
-                  }
-                  style={{
-                    width:
-                      "calc(100% - 44px)",
-                    border: "none",
-                    textAlign: "left",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div>
-                    <strong>
-                      {restaurant.name}
-                    </strong>
+            {sortedRestaurants.map(
+              (restaurant) => {
+                const distance =
+                  getRestaurantDistance(restaurant);
 
-                    <p>
-                      {restaurant.genre}
-                      <br />
-                      🚬{" "}
-                      {restaurant.smoking}
-                      <br />
-                      {restaurant.address}
-                    </p>
-                  </div>
-                </button>
-              )
+                return (
+                  <button
+                    className="trustBox"
+                    key={restaurant.id}
+                    onClick={() =>
+                      openRestaurant(restaurant)
+                    }
+                    style={{
+                      width: "calc(100% - 44px)",
+                      border: "none",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div>
+                      <strong>
+                        {restaurant.name}
+                      </strong>
+
+                      <p>
+                        📍 {formatDistance(distance)}
+                        <br />
+                        {restaurant.genre}
+                        <br />
+                        🚬 {restaurant.smoking}
+                        <br />
+                        💰{" "}
+                        {restaurant.budget ||
+                          "予算情報なし"}
+                        <br />
+                        {restaurant.address}
+                      </p>
+                    </div>
+                  </button>
+                );
+              }
             )}
           </div>
         </section>
       )}
 
       <section className="trustBox">
-        <div className="trustIcon">
-          ✓
-        </div>
+        <div className="trustIcon">✓</div>
 
         <div>
-          <strong>
-            新しい喫煙情報を優先
-          </strong>
+          <strong>新しい喫煙情報を優先</strong>
 
           <p>
             公式情報と最近のユーザー確認から、
