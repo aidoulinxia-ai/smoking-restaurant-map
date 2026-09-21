@@ -264,22 +264,9 @@ export default function Home() {
       return "";
     }
 
-    const latDelta = 0.002;
-    const lngDelta = 0.003;
-
-    const left = lng - lngDelta;
-    const bottom = lat - latDelta;
-    const right = lng + lngDelta;
-    const top = lat + latDelta;
-
-    const bbox = `${left},${bottom},${right},${top}`;
-
-    return (
-      "https://www.openstreetmap.org/export/embed.html" +
-      `?bbox=${encodeURIComponent(bbox)}` +
-      "&layer=mapnik" +
-      `&marker=${encodeURIComponent(`${lat},${lng}`)}`
-    );
+    return `/api/google-map?lat=${encodeURIComponent(
+      lat
+    )}&lng=${encodeURIComponent(lng)}`;
   }
 
   function getDirectionsUrl(restaurant) {
@@ -290,7 +277,7 @@ export default function Home() {
       return "";
     }
 
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
       `${lat},${lng}`
     )}`;
   }
@@ -381,7 +368,7 @@ export default function Home() {
               }}
             >
               <iframe
-                title={`${selectedRestaurant.name}の地図`}
+                title={`${selectedRestaurant.name}のGoogleマップ`}
                 src={mapUrl}
                 width="100%"
                 height="320"
@@ -390,6 +377,8 @@ export default function Home() {
                   border: 0,
                 }}
                 loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
               />
 
               <div
@@ -436,7 +425,7 @@ export default function Home() {
                       textDecoration: "none",
                     }}
                   >
-                    📍 ここへ行く
+                    📍 Googleマップで経路を見る
                   </a>
                 )}
               </div>
@@ -580,10 +569,7 @@ export default function Home() {
         </section>
 
         <nav className="bottomNav">
-          <button
-            className="navActive"
-            onClick={closeRestaurant}
-          >
+          <button className="navActive" onClick={closeRestaurant}>
             <span>←</span>
             <small>戻る</small>
           </button>
