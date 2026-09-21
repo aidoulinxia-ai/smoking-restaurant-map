@@ -127,10 +127,7 @@ export default function Home() {
     const lat = Number(restaurant.lat);
     const lng = Number(restaurant.lng);
 
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return Infinity;
     }
 
@@ -170,6 +167,22 @@ export default function Home() {
     return Number(numbers[0]);
   }
 
+  function getSmokingFreshnessValue(restaurant) {
+    if (!restaurant.latestSmokingReportAt) {
+      return 0;
+    }
+
+    const time = new Date(
+      restaurant.latestSmokingReportAt
+    ).getTime();
+
+    if (!Number.isFinite(time)) {
+      return 0;
+    }
+
+    return time;
+  }
+
   const sortedRestaurants = useMemo(() => {
     const copiedRestaurants = [...restaurants];
 
@@ -181,12 +194,70 @@ export default function Home() {
       );
     }
 
+    if (sortType === "freshness") {
+      return copiedRestaurants.sort(
+        (a, b) =>
+          getSmokingFreshnessValue(b) -
+          getSmokingFreshnessValue(a)
+      );
+    }
+
     return copiedRestaurants.sort(
       (a, b) =>
         getRestaurantDistance(a) -
         getRestaurantDistance(b)
     );
   }, [restaurants, sortType, userLocation]);
+
+  async function loadSmokingStatuses(restaurantList) {
+    if (restaurantList.length === 0) {
+      return restaurantList;
+    }
+
+    try {
+      const response = await fetch("/api/smoking-statuses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          restaurantIds: restaurantList.map(
+            (restaurant) => restaurant.id
+          ),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "喫煙情報を取得できませんでした"
+        );
+      }
+
+      const statuses = data.statuses || {};
+
+      return restaurantList.map((restaurant) => {
+        const status = statuses[String(restaurant.id)];
+
+        return {
+          ...restaurant,
+          latestSmokingReportAt:
+            status?.latestCreatedAt || null,
+          latestSmokingReportStatus:
+            status?.latestStatus || null,
+        };
+      });
+    } catch (err) {
+      console.error(err);
+
+      return restaurantList.map((restaurant) => ({
+        ...restaurant,
+        latestSmokingReportAt: null,
+        latestSmokingReportStatus: null,
+      }));
+    }
+  }
 
   function searchRestaurants() {
     if (!navigator.geolocation) {
@@ -229,7 +300,12 @@ export default function Home() {
             data.restaurants || []
           ).filter(matchesFilter);
 
-          setRestaurants(filteredRestaurants);
+          const restaurantsWithStatuses =
+            await loadSmokingStatuses(
+              filteredRestaurants
+            );
+
+          setRestaurants(restaurantsWithStatuses);
 
           if (filteredRestaurants.length === 0) {
             setError(
@@ -337,6 +413,21 @@ export default function Home() {
 
       setReportResult(smokingStatusValue);
       await loadSmokingStatus(selectedRestaurant.id);
+
+      setRestaurants((currentRestaurants) =>
+        currentRestaurants.map((restaurant) =>
+          String(restaurant.id) ===
+          String(selectedRestaurant.id)
+            ? {
+                ...restaurant,
+                latestSmokingReportAt:
+                  new Date().toISOString(),
+                latestSmokingReportStatus:
+                  smokingStatusValue,
+              }
+            : restaurant
+        )
+      );
     } catch (err) {
       setReportError(err.message);
     } finally {
@@ -401,10 +492,7 @@ export default function Home() {
     const lat = Number(restaurant.lat);
     const lng = Number(restaurant.lng);
 
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return "";
     }
 
@@ -414,10 +502,7 @@ export default function Home() {
   }
 
   function getResultsMapUrl() {
-    if (
-      restaurants.length === 0 ||
-      !userLocation
-    ) {
+    if (restaurants.length === 0 || !userLocation) {
       return "";
     }
 
@@ -444,10 +529,7 @@ export default function Home() {
     const lat = Number(restaurant.lat);
     const lng = Number(restaurant.lng);
 
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng)
-    ) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       return "";
     }
 
@@ -918,7 +1000,8 @@ export default function Home() {
               aria-label="並び替え"
               style={{
                 minHeight: "42px",
-                padding: "0 12px",
+                maxWidth: "210px",
+                padding: "0 10px",
                 border: "1px solid #dddddd",
                 borderRadius: "12px",
                 background: "#ffffff",
@@ -933,6 +1016,10 @@ export default function Home() {
 
               <option value="price">
                 💰 安い順
+              </option>
+
+              <option value="freshness">
+                🚬 喫煙情報が新しい順
               </option>
             </select>
           </div>
@@ -994,6 +1081,13 @@ export default function Home() {
                         {restaurant.genre}
                         <br />
                         🚬 {restaurant.smoking}
+                        <br />
+                        🕒{" "}
+                        {restaurant.latestSmokingReportAt
+                          ? `ユーザー確認 ${formatTimeAgo(
+                              restaurant.latestSmokingReportAt
+                            )}`
+                          : "ユーザー確認なし"}
                         <br />
                         💰{" "}
                         {restaurant.budget ||
