@@ -10,11 +10,11 @@ export async function POST(request) {
       });
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "Google Maps APIキーがありません" },
+        { error: "Google Places APIキーがありません" },
         { status: 500 }
       );
     }
