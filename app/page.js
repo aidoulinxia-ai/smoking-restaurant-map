@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
 
+const FAVORITES_STORAGE_KEY = "smoke-map-favorites";
+
 export default function Home() {
   const [locationStatus, setLocationStatus] =
     useState("現在地から探す");
@@ -32,6 +34,7 @@ export default function Home() {
 
   const [viewMode, setViewMode] = useState("search");
   const [history, setHistory] = useState([]);
+  const [favorites, setFavorites] = useState([]);
 
   const filters = [
     { id: "paper", icon: "🚬", label: "紙巻きOK" },
@@ -46,17 +49,30 @@ export default function Home() {
         HISTORY_STORAGE_KEY
       );
 
-      if (!savedHistory) {
-        return;
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory);
+
+        if (Array.isArray(parsedHistory)) {
+          setHistory(parsedHistory);
+        }
       }
 
-      const parsedHistory = JSON.parse(savedHistory);
+      const savedFavorites = window.localStorage.getItem(
+        FAVORITES_STORAGE_KEY
+      );
 
-      if (Array.isArray(parsedHistory)) {
-        setHistory(parsedHistory);
+      if (savedFavorites) {
+        const parsedFavorites = JSON.parse(savedFavorites);
+
+        if (Array.isArray(parsedFavorites)) {
+          setFavorites(parsedFavorites);
+        }
       }
     } catch (error) {
-      console.error("履歴の読み込みに失敗しました", error);
+      console.error(
+        "保存データの読み込みに失敗しました",
+        error
+      );
     }
   }, []);
 
@@ -151,9 +167,71 @@ export default function Home() {
     saveHistory([]);
   }
 
+  function saveFavorites(nextFavorites) {
+    setFavorites(nextFavorites);
+
+    try {
+      window.localStorage.setItem(
+        FAVORITES_STORAGE_KEY,
+        JSON.stringify(nextFavorites)
+      );
+    } catch (error) {
+      console.error(
+        "お気に入りの保存に失敗しました",
+        error
+      );
+    }
+  }
+
+  function isFavorite(restaurantId) {
+    return favorites.some(
+      (restaurant) =>
+        String(restaurant.id) === String(restaurantId)
+    );
+  }
+
+  function toggleFavorite(restaurant) {
+    if (!restaurant?.id) {
+      return;
+    }
+
+    if (isFavorite(restaurant.id)) {
+      const nextFavorites = favorites.filter(
+        (item) =>
+          String(item.id) !== String(restaurant.id)
+      );
+
+      saveFavorites(nextFavorites);
+      return;
+    }
+
+    const favoriteRestaurant = {
+      ...restaurant,
+      favoritedAt: new Date().toISOString(),
+    };
+
+    saveFavorites([
+      favoriteRestaurant,
+      ...favorites,
+    ]);
+  }
+
   function showSearch() {
     setViewMode("search");
     setSelectedRestaurant(null);
+    setReportResult("");
+    setReportError("");
+    setSmokingStatus(null);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  function showFavorites() {
+    setSelectedRestaurant(null);
+    setViewMode("favorites");
     setReportResult("");
     setReportError("");
     setSmokingStatus(null);
@@ -908,7 +986,14 @@ export default function Home() {
           <small>探す</small>
         </button>
 
-        <button>
+        <button
+          className={
+            activeMode === "favorites"
+              ? "navActive"
+              : ""
+          }
+          onClick={showFavorites}
+        >
           <span>♡</span>
           <small>お気に入り</small>
         </button>
@@ -939,6 +1024,10 @@ export default function Home() {
 
     const directionsUrl =
       getDirectionsUrl(selectedRestaurant);
+
+    const selectedIsFavorite = isFavorite(
+      selectedRestaurant.id
+    );
 
     return (
       <main className="home">
@@ -972,6 +1061,31 @@ export default function Home() {
             {selectedRestaurant.genre ||
               "ジャンル情報なし"}
           </p>
+
+          <button
+            onClick={() =>
+              toggleFavorite(selectedRestaurant)
+            }
+            style={{
+              minHeight: "48px",
+              padding: "0 18px",
+              border: selectedIsFavorite
+                ? "1px solid #151515"
+                : "1px solid #dddddd",
+              borderRadius: "14px",
+              background: selectedIsFavorite
+                ? "#151515"
+                : "#ffffff",
+              color: selectedIsFavorite
+                ? "#ffffff"
+                : "#151515",
+              fontWeight: "800",
+            }}
+          >
+            {selectedIsFavorite
+              ? "♥ お気に入り済み"
+              : "♡ お気に入りに追加"}
+          </button>
         </section>
 
         <section className="filterSection">
@@ -981,9 +1095,7 @@ export default function Home() {
               undefined && (
               <div className="trustBox">
                 <div>
-                  <strong>
-                    ⭐ Google評価
-                  </strong>
+                  <strong>⭐ Google評価</strong>
 
                   <p>
                     ⭐{" "}
@@ -1308,6 +1420,150 @@ export default function Home() {
     );
   }
 
+  if (viewMode === "favorites") {
+    return (
+      <main className="home">
+        <header className="header">
+          <div className="logo">
+            SMOKE MAP
+          </div>
+
+          <button
+            className="menuButton"
+            onClick={showSearch}
+            aria-label="戻る"
+          >
+            ←
+          </button>
+        </header>
+
+        <section className="hero">
+          <div className="location">
+            <span>♡</span>
+            <span>保存したお店</span>
+          </div>
+
+          <h1>お気に入り</h1>
+
+          <p className="description">
+            気になるお店を保存して、
+            <br />
+            いつでもすぐに見直せます。
+          </p>
+        </section>
+
+        <section className="filterSection">
+          {favorites.length === 0 ? (
+            <div className="trustBox">
+              <div>
+                <strong>
+                  まだお気に入りはありません
+                </strong>
+
+                <p>
+                  店舗詳細の
+                  「♡ お気に入りに追加」から
+                  保存できます。
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="filterTitle">
+                保存したお店（
+                {favorites.length}件）
+              </p>
+
+              <div>
+                {favorites.map((restaurant) => (
+                  <div
+                    className="trustBox"
+                    key={restaurant.id}
+                    style={{
+                      position: "relative",
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        openRestaurant(restaurant)
+                      }
+                      style={{
+                        flex: 1,
+                        padding: 0,
+                        border: 0,
+                        background: "transparent",
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <strong>
+                        {restaurant.name}
+                      </strong>
+
+                      <p>
+                        {restaurant.genre ||
+                          "ジャンル情報なし"}
+                        <br />
+
+                        🚬{" "}
+                        {restaurant.smoking ||
+                          "喫煙情報なし"}
+                        <br />
+
+                        ⭐{" "}
+                        {restaurant.googleRating !==
+                          null &&
+                        restaurant.googleRating !==
+                          undefined
+                          ? `${Number(
+                              restaurant.googleRating
+                            ).toFixed(1)}（${
+                              restaurant.googleUserRatingCount ||
+                              0
+                            }件）`
+                          : "Google評価なし"}
+                        <br />
+
+                        💰{" "}
+                        {restaurant.budget ||
+                          "予算情報なし"}
+                        <br />
+
+                        {restaurant.address ||
+                          "住所情報なし"}
+                      </p>
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleFavorite(restaurant)
+                      }
+                      aria-label="お気に入りから削除"
+                      style={{
+                        flex: "0 0 42px",
+                        width: "42px",
+                        height: "42px",
+                        border:
+                          "1px solid #dddddd",
+                        borderRadius: "12px",
+                        background: "#ffffff",
+                        fontSize: "20px",
+                      }}
+                    >
+                      ♥
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+
+        {renderBottomNav("favorites")}
+      </main>
+    );
+  }
+
   if (viewMode === "history") {
     return (
       <main className="home">
@@ -1331,9 +1587,7 @@ export default function Home() {
             <span>最近見たお店</span>
           </div>
 
-          <h1>
-            閲覧履歴
-          </h1>
+          <h1>閲覧履歴</h1>
 
           <p className="description">
             最近チェックしたお店を
