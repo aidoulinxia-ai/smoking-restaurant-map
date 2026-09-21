@@ -12,15 +12,52 @@ export async function GET(request) {
     );
   }
 
-  const lat = searchParams.get("lat");
-  const lng = searchParams.get("lng");
+  const restaurantsParam = searchParams.get("restaurants");
 
-  if (!lat || !lng) {
+  if (!restaurantsParam) {
     return NextResponse.json(
-      { error: "位置情報が必要です" },
+      { error: "店舗情報が必要です" },
       { status: 400 }
     );
   }
+
+  let restaurants;
+
+  try {
+    restaurants = JSON.parse(restaurantsParam);
+  } catch {
+    return NextResponse.json(
+      { error: "店舗情報が不正です" },
+      { status: 400 }
+    );
+  }
+
+  const validRestaurants = restaurants
+    .map((restaurant) => ({
+      id: String(restaurant.id || ""),
+      name: String(restaurant.name || ""),
+      lat: Number(restaurant.lat),
+      lng: Number(restaurant.lng),
+    }))
+    .filter(
+      (restaurant) =>
+        restaurant.id &&
+        Number.isFinite(restaurant.lat) &&
+        Number.isFinite(restaurant.lng)
+    )
+    .slice(0, 30);
+
+  if (validRestaurants.length === 0) {
+    return NextResponse.json(
+      { error: "地図に表示できる店舗がありません" },
+      { status: 400 }
+    );
+  }
+
+  const safeRestaurants = JSON.stringify(validRestaurants).replace(
+    /</g,
+    "\\u003c"
+  );
 
   const html = `
 <!DOCTYPE html>
@@ -31,6 +68,7 @@ export async function GET(request) {
     name="viewport"
     content="width=device-width, initial-scale=1.0"
   />
+
   <style>
     html,
     body,
@@ -47,28 +85,63 @@ export async function GET(request) {
   <div id="map"></div>
 
   <script>
-    function initMap() {
-      const center = {
-        lat: ${Number(lat)},
-        lng: ${Number(lng)}
-      };
+    const restaurants = ${safeRestaurants};
 
-      new google.maps.Map(
+    function initMap() {
+      const first = restaurants[0];
+
+      const map = new google.maps.Map(
         document.getElementById("map"),
         {
-          center,
+          center: {
+            lat: first.lat,
+            lng: first.lng
+          },
           zoom: 15,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false
         }
       );
+
+      const bounds = new google.maps.LatLngBounds();
+
+      restaurants.forEach((restaurant) => {
+        const position = {
+          lat: restaurant.lat,
+          lng: restaurant.lng
+        };
+
+        const marker = new google.maps.Marker({
+          position,
+          map,
+          title: restaurant.name
+        });
+
+        bounds.extend(position);
+
+        marker.addListener("click", () => {
+          window.parent.postMessage(
+            {
+              type: "SMOKE_MAP_RESTAURANT",
+              restaurantId: restaurant.id
+            },
+            window.location.origin
+          );
+        });
+      });
+
+      if (restaurants.length > 1) {
+        map.fitBounds(bounds, 50);
+      }
     }
   </script>
 
   <script
     async
-    src="https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+      apiKey
+    )}&callback=initMap">
   </script>
 </body>
 </html>
