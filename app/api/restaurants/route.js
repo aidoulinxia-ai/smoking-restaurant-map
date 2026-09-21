@@ -1,190 +1,136 @@
 import { NextResponse } from "next/server";
 
+function getSmokingType(smokingText) {
+  if (!smokingText) {
+    return "unknown";
+  }
+
+  if (smokingText.includes("全面禁煙")) {
+    return "non_smoking";
+  }
+
+  if (
+    smokingText.includes("加熱式") ||
+    smokingText.includes("加熱式たばこ")
+  ) {
+    return "heated_candidate";
+  }
+
+  if (
+    smokingText.includes("喫煙室") ||
+    smokingText.includes("喫煙専用室")
+  ) {
+    return "smoking_room";
+  }
+
+  if (
+    smokingText.includes("禁煙席なし") ||
+    smokingText.includes("全席喫煙可")
+  ) {
+    return "smoking_candidate";
+  }
+
+  return "unknown";
+}
+
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
+  try {
+    const { searchParams } = new URL(request.url);
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const lat = searchParams.get("lat");
+    const lng = searchParams.get("lng");
 
-  if (!apiKey) {
+    if (!lat || !lng) {
+      return NextResponse.json(
+        { error: "現在地が必要です" },
+        { status: 400 }
+      );
+    }
+
+    const apiKey = process.env.HOTPEPPER_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "APIキーが設定されていません" },
+        { status: 500 }
+      );
+    }
+
+    const params = new URLSearchParams({
+      key: apiKey,
+      lat,
+      lng,
+      range: "3",
+      count: "30",
+      format: "json",
+    });
+
+    const response = await fetch(
+      `https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?${params.toString()}`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Hot Pepper APIの取得に失敗しました"
+      );
+    }
+
+    const data = await response.json();
+
+    const restaurants =
+      data.results?.shop?.map((shop) => {
+        const smokingText =
+          shop.non_smoking || "";
+
+        return {
+          id: shop.id,
+          name: shop.name,
+          address: shop.address,
+          lat: shop.lat,
+          lng: shop.lng,
+          genre: shop.genre?.name || "",
+          budget: shop.budget?.name || "",
+          photo: shop.photo?.mobile?.l || "",
+          open: shop.open || "",
+          access: shop.access || "",
+          smoking: smokingText,
+          smokingType:
+            getSmokingType(smokingText),
+          urls: shop.urls?.pc || "",
+        };
+      }) || [];
+
+    const smokingSummary =
+      restaurants.reduce(
+        (summary, restaurant) => {
+          const type =
+            restaurant.smokingType;
+
+          summary[type] =
+            (summary[type] || 0) + 1;
+
+          return summary;
+        },
+        {}
+      );
+
+    return NextResponse.json({
+      count: restaurants.length,
+      smokingSummary,
+      restaurants,
+    });
+  } catch (error) {
+    console.error(error);
+
     return NextResponse.json(
-      { error: "Google Maps APIキーがありません" },
+      {
+        error:
+          "店舗情報を取得できませんでした",
+      },
       { status: 500 }
     );
   }
-
-  const userLat = Number(searchParams.get("lat"));
-  const userLng = Number(searchParams.get("lng"));
-  const restaurantsParam = searchParams.get("restaurants");
-
-  if (
-    !Number.isFinite(userLat) ||
-    !Number.isFinite(userLng)
-  ) {
-    return NextResponse.json(
-      { error: "現在地が必要です" },
-      { status: 400 }
-    );
-  }
-
-  if (!restaurantsParam) {
-    return NextResponse.json(
-      { error: "店舗情報が必要です" },
-      { status: 400 }
-    );
-  }
-
-  let restaurants;
-
-  try {
-    restaurants = JSON.parse(restaurantsParam);
-  } catch {
-    return NextResponse.json(
-      { error: "店舗情報が不正です" },
-      { status: 400 }
-    );
-  }
-
-  if (!Array.isArray(restaurants)) {
-    return NextResponse.json(
-      { error: "店舗情報が不正です" },
-      { status: 400 }
-    );
-  }
-
-  const validRestaurants = restaurants
-    .map((restaurant) => ({
-      id: String(restaurant.id || ""),
-      name: String(restaurant.name || ""),
-      lat: Number(restaurant.lat),
-      lng: Number(restaurant.lng),
-    }))
-    .filter(
-      (restaurant) =>
-        restaurant.id &&
-        Number.isFinite(restaurant.lat) &&
-        Number.isFinite(restaurant.lng)
-    )
-    .slice(0, 30);
-
-  if (validRestaurants.length === 0) {
-    return NextResponse.json(
-      { error: "地図に表示できる店舗がありません" },
-      { status: 400 }
-    );
-  }
-
-  const safeRestaurants = JSON.stringify(
-    validRestaurants
-  ).replace(/</g, "\\u003c");
-
-  const html = `
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
-  <style>
-    html,
-    body,
-    #map {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-  </style>
-</head>
-
-<body>
-  <div id="map"></div>
-
-  <script>
-    const restaurants = ${safeRestaurants};
-
-    const userLocation = {
-      lat: ${userLat},
-      lng: ${userLng}
-    };
-
-    function initMap() {
-      const map = new google.maps.Map(
-        document.getElementById("map"),
-        {
-          center: userLocation,
-          zoom: 15,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false
-        }
-      );
-
-      const bounds = new google.maps.LatLngBounds();
-
-      new google.maps.Marker({
-        position: userLocation,
-        map,
-        title: "現在地",
-        zIndex: 9999,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 4
-        }
-      });
-
-      bounds.extend(userLocation);
-
-      restaurants.forEach((restaurant) => {
-        const position = {
-          lat: restaurant.lat,
-          lng: restaurant.lng
-        };
-
-        const marker = new google.maps.Marker({
-          position,
-          map,
-          title: restaurant.name
-        });
-
-        bounds.extend(position);
-
-        marker.addListener("click", () => {
-          window.parent.postMessage(
-            {
-              type: "SMOKE_MAP_RESTAURANT",
-              restaurantId: restaurant.id
-            },
-            window.location.origin
-          );
-        });
-      });
-
-      map.fitBounds(bounds, 50);
-    }
-  </script>
-
-  <script
-    async
-    src="https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-      apiKey
-    )}&callback=initMap">
-  </script>
-</body>
-</html>
-  `;
-
-  return new NextResponse(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
 }
