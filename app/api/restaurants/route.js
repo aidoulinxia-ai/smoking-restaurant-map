@@ -60,8 +60,8 @@ export async function GET(request) {
       key: apiKey,
       lat,
       lng,
-      range: "3",
-      count: "30",
+      range: "5",
+      count: "100",
       format: "json",
     });
 
