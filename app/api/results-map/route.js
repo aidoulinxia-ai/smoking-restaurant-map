@@ -12,7 +12,19 @@ export async function GET(request) {
     );
   }
 
+  const userLat = Number(searchParams.get("lat"));
+  const userLng = Number(searchParams.get("lng"));
   const restaurantsParam = searchParams.get("restaurants");
+
+  if (
+    !Number.isFinite(userLat) ||
+    !Number.isFinite(userLng)
+  ) {
+    return NextResponse.json(
+      { error: "現在地が必要です" },
+      { status: 400 }
+    );
+  }
 
   if (!restaurantsParam) {
     return NextResponse.json(
@@ -32,6 +44,13 @@ export async function GET(request) {
     );
   }
 
+  if (!Array.isArray(restaurants)) {
+    return NextResponse.json(
+      { error: "店舗情報が不正です" },
+      { status: 400 }
+    );
+  }
+
   const validRestaurants = restaurants
     .map((restaurant) => ({
       id: String(restaurant.id || ""),
@@ -45,7 +64,7 @@ export async function GET(request) {
         Number.isFinite(restaurant.lat) &&
         Number.isFinite(restaurant.lng)
     )
-    .slice(0, 30);
+    .slice(0, 100);
 
   if (validRestaurants.length === 0) {
     return NextResponse.json(
@@ -54,16 +73,16 @@ export async function GET(request) {
     );
   }
 
-  const safeRestaurants = JSON.stringify(validRestaurants).replace(
-    /</g,
-    "\\u003c"
-  );
+  const safeRestaurants = JSON.stringify(
+    validRestaurants
+  ).replace(/</g, "\\u003c");
 
   const html = `
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
@@ -87,16 +106,16 @@ export async function GET(request) {
   <script>
     const restaurants = ${safeRestaurants};
 
-    function initMap() {
-      const first = restaurants[0];
+    const userLocation = {
+      lat: ${userLat},
+      lng: ${userLng}
+    };
 
+    function initMap() {
       const map = new google.maps.Map(
         document.getElementById("map"),
         {
-          center: {
-            lat: first.lat,
-            lng: first.lng
-          },
+          center: userLocation,
           zoom: 15,
           mapTypeControl: false,
           streetViewControl: false,
@@ -106,6 +125,26 @@ export async function GET(request) {
 
       const bounds = new google.maps.LatLngBounds();
 
+      // 現在地
+      new google.maps.Marker({
+        position: userLocation,
+        map: map,
+        title: "現在地",
+        zIndex: 9999,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: "#4285F4",
+          fillOpacity: 1,
+          strokeColor: "#FFFFFF",
+          strokeOpacity: 1,
+          strokeWeight: 4
+        }
+      });
+
+      bounds.extend(userLocation);
+
+      // 店舗
       restaurants.forEach((restaurant) => {
         const position = {
           lat: restaurant.lat,
@@ -113,8 +152,8 @@ export async function GET(request) {
         };
 
         const marker = new google.maps.Marker({
-          position,
-          map,
+          position: position,
+          map: map,
           title: restaurant.name
         });
 
@@ -131,9 +170,7 @@ export async function GET(request) {
         });
       });
 
-      if (restaurants.length > 1) {
-        map.fitBounds(bounds, 50);
-      }
+      map.fitBounds(bounds, 50);
     }
   </script>
 
