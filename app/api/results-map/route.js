@@ -12,16 +12,20 @@ export async function GET(request) {
     );
   }
 
-  const userLat = Number(searchParams.get("lat"));
-  const userLng = Number(searchParams.get("lng"));
-  const restaurantsParam = searchParams.get("restaurants");
+  const centerLat = Number(searchParams.get("lat"));
+  const centerLng = Number(searchParams.get("lng"));
+  const restaurantsParam =
+    searchParams.get("restaurants");
+
+  const showCurrentLocation =
+    searchParams.get("showCurrentLocation") !== "false";
 
   if (
-    !Number.isFinite(userLat) ||
-    !Number.isFinite(userLng)
+    !Number.isFinite(centerLat) ||
+    !Number.isFinite(centerLng)
   ) {
     return NextResponse.json(
-      { error: "現在地が必要です" },
+      { error: "検索地点が必要です" },
       { status: 400 }
     );
   }
@@ -68,7 +72,10 @@ export async function GET(request) {
 
   if (validRestaurants.length === 0) {
     return NextResponse.json(
-      { error: "地図に表示できる店舗がありません" },
+      {
+        error:
+          "地図に表示できる店舗がありません",
+      },
       { status: 400 }
     );
   }
@@ -82,7 +89,6 @@ export async function GET(request) {
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0"
@@ -106,16 +112,18 @@ export async function GET(request) {
   <script>
     const restaurants = ${safeRestaurants};
 
-    const userLocation = {
-      lat: ${userLat},
-      lng: ${userLng}
+    const searchCenter = {
+      lat: ${centerLat},
+      lng: ${centerLng}
     };
+
+    const showCurrentLocation = ${showCurrentLocation};
 
     function initMap() {
       const map = new google.maps.Map(
         document.getElementById("map"),
         {
-          center: userLocation,
+          center: searchCenter,
           zoom: 15,
           mapTypeControl: false,
           streetViewControl: false,
@@ -123,52 +131,62 @@ export async function GET(request) {
         }
       );
 
-      const bounds = new google.maps.LatLngBounds();
+      const bounds =
+        new google.maps.LatLngBounds();
 
-      // 現在地
-      new google.maps.Marker({
-        position: userLocation,
-        map: map,
-        title: "現在地",
-        zIndex: 9999,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeOpacity: 1,
-          strokeWeight: 4
-        }
-      });
-
-      bounds.extend(userLocation);
-
-      // 店舗
-      restaurants.forEach((restaurant) => {
-        const position = {
-          lat: restaurant.lat,
-          lng: restaurant.lng
-        };
-
-        const marker = new google.maps.Marker({
-          position: position,
+      if (showCurrentLocation) {
+        new google.maps.Marker({
+          position: searchCenter,
           map: map,
-          title: restaurant.name
+          title: "現在地",
+          zIndex: 9999,
+          icon: {
+            path:
+              google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "#FFFFFF",
+            strokeOpacity: 1,
+            strokeWeight: 4
+          }
         });
+      }
 
-        bounds.extend(position);
+      bounds.extend(searchCenter);
 
-        marker.addListener("click", () => {
-          window.parent.postMessage(
-            {
-              type: "SMOKE_MAP_RESTAURANT",
-              restaurantId: restaurant.id
-            },
-            window.location.origin
+      restaurants.forEach(
+        (restaurant) => {
+          const position = {
+            lat: restaurant.lat,
+            lng: restaurant.lng
+          };
+
+          const marker =
+            new google.maps.Marker({
+              position: position,
+              map: map,
+              title: restaurant.name
+            });
+
+          bounds.extend(position);
+
+          marker.addListener(
+            "click",
+            () => {
+              window.parent.postMessage(
+                {
+                  type:
+                    "SMOKE_MAP_RESTAURANT",
+                  restaurantId:
+                    restaurant.id
+                },
+                window.location.origin
+              );
+            }
           );
-        });
-      });
+        }
+      );
 
       map.fitBounds(bounds, 50);
     }
@@ -186,7 +204,8 @@ export async function GET(request) {
 
   return new NextResponse(html, {
     headers: {
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type":
+        "text/html; charset=utf-8",
       "Cache-Control": "no-store",
     },
   });
