@@ -201,6 +201,10 @@ export default function Home() {
     ]);
   }
 
+  function scrollToTop() {
+    window.scrollTo(0, 0);
+  }
+
   function showSearch() {
     setViewMode("search");
     setSelectedRestaurant(null);
@@ -208,10 +212,7 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToTop();
   }
 
   function showFavorites() {
@@ -221,10 +222,7 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToTop();
   }
 
   function showHistory() {
@@ -234,10 +232,7 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToTop();
   }
 
   function toggleFilter(filterId) {
@@ -745,9 +740,8 @@ export default function Home() {
     addRestaurantToHistory(restaurant);
     loadSmokingStatus(restaurant.id);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
     });
   }
 
@@ -757,10 +751,7 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    scrollToTop();
   }
 
   async function submitSmokingReport(smokingStatusValue) {
@@ -1629,47 +1620,6 @@ export default function Home() {
             {loading ? "検索中..." : "この条件で探す"}
           </button>
         </form>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            margin: "20px 0",
-            color: "#a0a0a0",
-            fontSize: "12px",
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              background: "#e8e8e8",
-            }}
-          />
-
-          <span>または</span>
-
-          <div
-            style={{
-              flex: 1,
-              height: "1px",
-              background: "#e8e8e8",
-            }}
-          />
-        </div>
-
-        <button
-          className="location"
-          onClick={searchRestaurants}
-          disabled={loading}
-          style={{
-            marginBottom: 0,
-          }}
-        >
-          <span>📍</span>
-          <span>{locationStatus}</span>
-        </button>
       </section>
 
       <section className="filterSection">
