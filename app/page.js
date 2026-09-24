@@ -895,9 +895,12 @@ export default function Home() {
     setSelectedRestaurant(null);
     setSearchAreaName("");
     setSearchMode("current");
-    setSearchKeyword(
-      keywordQuery.trim()
-    );
+
+    const keyword =
+      keywordQuery.trim();
+
+    setSearchKeyword(keyword);
+
     setLocationStatus(
       "現在地を取得中..."
     );
@@ -919,9 +922,6 @@ export default function Home() {
           setLocationStatus(
             "現在地を取得しました"
           );
-
-          const keyword =
-            keywordQuery.trim();
 
           await loadRestaurantsAtLocation(
             lat,
@@ -2311,31 +2311,74 @@ export default function Home() {
               エリア
             </label>
 
-            <input
-              type="search"
-              value={areaQuery}
-              onChange={(event) =>
-                setAreaQuery(
-                  event.target.value
-                )
-              }
-              placeholder="新宿・池袋・渋谷など"
-              aria-label="エリア"
+            <div
               style={{
-                width: "100%",
-                minHeight: "56px",
-                padding: "0 16px",
-                border:
-                  "1px solid #dddddd",
-                borderRadius:
-                  "16px",
-                background:
-                  "#ffffff",
-                color: "#151515",
-                fontSize: "16px",
-                outline: "none",
+                position: "relative",
               }}
-            />
+            >
+              <input
+                type="search"
+                value={areaQuery}
+                onChange={(event) =>
+                  setAreaQuery(
+                    event.target.value
+                  )
+                }
+                placeholder="新宿・池袋・渋谷など"
+                aria-label="エリア"
+                style={{
+                  width: "100%",
+                  minHeight: "56px",
+                  padding: areaQuery
+                    ? "0 52px 0 16px"
+                    : "0 16px",
+                  border:
+                    "1px solid #dddddd",
+                  borderRadius:
+                    "16px",
+                  background:
+                    "#ffffff",
+                  color: "#151515",
+                  fontSize: "16px",
+                  outline: "none",
+                }}
+              />
+
+              {areaQuery && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAreaQuery("")
+                  }
+                  aria-label="エリアを消去"
+                  style={{
+                    position:
+                      "absolute",
+                    top: "50%",
+                    right: "10px",
+                    transform:
+                      "translateY(-50%)",
+                    width: "36px",
+                    height: "36px",
+                    padding: 0,
+                    border: 0,
+                    borderRadius:
+                      "50%",
+                    background:
+                      "#f0f0f0",
+                    color:
+                      "#666666",
+                    fontSize: "20px",
+                    lineHeight: 1,
+                    display: "grid",
+                    placeItems:
+                      "center",
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
           <div>
@@ -2350,31 +2393,74 @@ export default function Home() {
               店名・ジャンル
             </label>
 
-            <input
-              type="search"
-              value={keywordQuery}
-              onChange={(event) =>
-                setKeywordQuery(
-                  event.target.value
-                )
-              }
-              placeholder="焼肉・居酒屋・鳥貴族など"
-              aria-label="店名・ジャンル"
+            <div
               style={{
-                width: "100%",
-                minHeight: "56px",
-                padding: "0 16px",
-                border:
-                  "1px solid #dddddd",
-                borderRadius:
-                  "16px",
-                background:
-                  "#ffffff",
-                color: "#151515",
-                fontSize: "16px",
-                outline: "none",
+                position: "relative",
               }}
-            />
+            >
+              <input
+                type="search"
+                value={keywordQuery}
+                onChange={(event) =>
+                  setKeywordQuery(
+                    event.target.value
+                  )
+                }
+                placeholder="焼肉・居酒屋・鳥貴族など"
+                aria-label="店名・ジャンル"
+                style={{
+                  width: "100%",
+                  minHeight: "56px",
+                  padding: keywordQuery
+                    ? "0 52px 0 16px"
+                    : "0 16px",
+                  border:
+                    "1px solid #dddddd",
+                  borderRadius:
+                    "16px",
+                  background:
+                    "#ffffff",
+                  color: "#151515",
+                  fontSize: "16px",
+                  outline: "none",
+                }}
+              />
+
+              {keywordQuery && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setKeywordQuery("")
+                  }
+                  aria-label="店名・ジャンルを消去"
+                  style={{
+                    position:
+                      "absolute",
+                    top: "50%",
+                    right: "10px",
+                    transform:
+                      "translateY(-50%)",
+                    width: "36px",
+                    height: "36px",
+                    padding: 0,
+                    border: 0,
+                    borderRadius:
+                      "50%",
+                    background:
+                      "#f0f0f0",
+                    color:
+                      "#666666",
+                    fontSize: "20px",
+                    lineHeight: 1,
+                    display: "grid",
+                    placeItems:
+                      "center",
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
           <button
