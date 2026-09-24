@@ -12,8 +12,8 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState(null);
 
   const [areaQuery, setAreaQuery] = useState("");
-  const [searchAreaName, setSearchAreaName] =
-    useState("");
+  const [searchAreaName, setSearchAreaName] = useState("");
+  const [searchMode, setSearchMode] = useState("current");
 
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] =
@@ -28,14 +28,11 @@ export default function Home() {
   const [sortType, setSortType] = useState("distance");
 
   const [reportResult, setReportResult] = useState("");
-  const [reportLoading, setReportLoading] =
-    useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState("");
 
-  const [smokingStatus, setSmokingStatus] =
-    useState(null);
-  const [statusLoading, setStatusLoading] =
-    useState(false);
+  const [smokingStatus, setSmokingStatus] = useState(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   const [viewMode, setViewMode] = useState("search");
   const [history, setHistory] = useState([]);
@@ -50,28 +47,24 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const savedHistory =
-        window.localStorage.getItem(
-          HISTORY_STORAGE_KEY
-        );
+      const savedHistory = window.localStorage.getItem(
+        HISTORY_STORAGE_KEY
+      );
 
       if (savedHistory) {
-        const parsedHistory =
-          JSON.parse(savedHistory);
+        const parsedHistory = JSON.parse(savedHistory);
 
         if (Array.isArray(parsedHistory)) {
           setHistory(parsedHistory);
         }
       }
 
-      const savedFavorites =
-        window.localStorage.getItem(
-          FAVORITES_STORAGE_KEY
-        );
+      const savedFavorites = window.localStorage.getItem(
+        FAVORITES_STORAGE_KEY
+      );
 
       if (savedFavorites) {
-        const parsedFavorites =
-          JSON.parse(savedFavorites);
+        const parsedFavorites = JSON.parse(savedFavorites);
 
         if (Array.isArray(parsedFavorites)) {
           setFavorites(parsedFavorites);
@@ -91,17 +84,13 @@ export default function Home() {
         return;
       }
 
-      if (
-        event.data?.type !==
-        "SMOKE_MAP_RESTAURANT"
-      ) {
+      if (event.data?.type !== "SMOKE_MAP_RESTAURANT") {
         return;
       }
 
       const restaurant = restaurants.find(
         (item) =>
-          String(item.id) ===
-          String(event.data.restaurantId)
+          String(item.id) === String(event.data.restaurantId)
       );
 
       if (restaurant) {
@@ -109,16 +98,10 @@ export default function Home() {
       }
     }
 
-    window.addEventListener(
-      "message",
-      handleMapMessage
-    );
+    window.addEventListener("message", handleMapMessage);
 
     return () => {
-      window.removeEventListener(
-        "message",
-        handleMapMessage
-      );
+      window.removeEventListener("message", handleMapMessage);
     };
   }, [restaurants]);
 
@@ -131,10 +114,7 @@ export default function Home() {
         JSON.stringify(nextHistory)
       );
     } catch (error) {
-      console.error(
-        "履歴の保存に失敗しました",
-        error
-      );
+      console.error("履歴の保存に失敗しました", error);
     }
   }
 
@@ -149,12 +129,10 @@ export default function Home() {
     };
 
     setHistory((currentHistory) => {
-      const withoutSameRestaurant =
-        currentHistory.filter(
-          (item) =>
-            String(item.id) !==
-            String(restaurant.id)
-        );
+      const withoutSameRestaurant = currentHistory.filter(
+        (item) =>
+          String(item.id) !== String(restaurant.id)
+      );
 
       const nextHistory = [
         historyRestaurant,
@@ -167,10 +145,7 @@ export default function Home() {
           JSON.stringify(nextHistory)
         );
       } catch (error) {
-        console.error(
-          "履歴の保存に失敗しました",
-          error
-        );
+        console.error("履歴の保存に失敗しました", error);
       }
 
       return nextHistory;
@@ -200,8 +175,7 @@ export default function Home() {
   function isFavorite(restaurantId) {
     return favorites.some(
       (restaurant) =>
-        String(restaurant.id) ===
-        String(restaurantId)
+        String(restaurant.id) === String(restaurantId)
     );
   }
 
@@ -211,12 +185,10 @@ export default function Home() {
     }
 
     if (isFavorite(restaurant.id)) {
-      const nextFavorites =
-        favorites.filter(
-          (item) =>
-            String(item.id) !==
-            String(restaurant.id)
-        );
+      const nextFavorites = favorites.filter(
+        (item) =>
+          String(item.id) !== String(restaurant.id)
+      );
 
       saveFavorites(nextFavorites);
       return;
@@ -274,67 +246,45 @@ export default function Home() {
 
   function toggleFilter(filterId) {
     setSelectedFilter((current) =>
-      current === filterId
-        ? "all"
-        : filterId
+      current === filterId ? "all" : filterId
     );
   }
 
   function matchesFilter(restaurant) {
-    if (
-      restaurant.smokingType ===
-      "non_smoking"
-    ) {
+    if (restaurant.smokingType === "non_smoking") {
       return false;
     }
 
     if (selectedFilter === "all") {
       return (
-        restaurant.smokingType !==
-          "non_smoking" &&
+        restaurant.smokingType !== "non_smoking" &&
         restaurant.smokingType !== "unknown"
       );
     }
 
     if (selectedFilter === "paper") {
-      return (
-        restaurant.smokingType ===
-        "smoking_candidate"
-      );
+      return restaurant.smokingType === "smoking_candidate";
     }
 
     if (selectedFilter === "heated") {
       return (
-        restaurant.smokingType ===
-          "heated_candidate" ||
-        restaurant.smokingType ===
-          "smoking_candidate"
+        restaurant.smokingType === "heated_candidate" ||
+        restaurant.smokingType === "smoking_candidate"
       );
     }
 
     if (selectedFilter === "seat") {
-      return (
-        restaurant.smokingType ===
-        "smoking_candidate"
-      );
+      return restaurant.smokingType === "smoking_candidate";
     }
 
     if (selectedFilter === "room") {
-      return (
-        restaurant.smokingType ===
-        "smoking_room"
-      );
+      return restaurant.smokingType === "smoking_room";
     }
 
     return false;
   }
 
-  function calculateDistance(
-    lat1,
-    lng1,
-    lat2,
-    lng2
-  ) {
+  function calculateDistance(lat1, lng1, lat2, lng2) {
     const toRadians = (value) =>
       (value * Math.PI) / 180;
 
@@ -399,9 +349,7 @@ export default function Home() {
       return `${Math.round(distance)}m`;
     }
 
-    return `${(distance / 1000).toFixed(
-      1
-    )}km`;
+    return `${(distance / 1000).toFixed(1)}km`;
   }
 
   function getBudgetValue(budgetText) {
@@ -413,22 +361,15 @@ export default function Home() {
       .replace(/,/g, "")
       .match(/\d+/g);
 
-    if (
-      !numbers ||
-      numbers.length === 0
-    ) {
+    if (!numbers || numbers.length === 0) {
       return Infinity;
     }
 
     return Number(numbers[0]);
   }
 
-  function getSmokingFreshnessValue(
-    restaurant
-  ) {
-    if (
-      !restaurant.latestSmokingReportAt
-    ) {
+  function getSmokingFreshnessValue(restaurant) {
+    if (!restaurant.latestSmokingReportAt) {
       return 0;
     }
 
@@ -444,9 +385,7 @@ export default function Home() {
   }
 
   function getRatingValue(restaurant) {
-    const rating = Number(
-      restaurant.googleRating
-    );
+    const rating = Number(restaurant.googleRating);
 
     if (!Number.isFinite(rating)) {
       return -1;
@@ -456,9 +395,7 @@ export default function Home() {
   }
 
   const sortedRestaurants = useMemo(() => {
-    const copiedRestaurants = [
-      ...restaurants,
-    ];
+    const copiedRestaurants = [...restaurants];
 
     if (sortType === "price") {
       return copiedRestaurants.sort(
@@ -477,26 +414,19 @@ export default function Home() {
     }
 
     if (sortType === "rating") {
-      return copiedRestaurants.sort(
-        (a, b) => {
-          const ratingDifference =
-            getRatingValue(b) -
-            getRatingValue(a);
+      return copiedRestaurants.sort((a, b) => {
+        const ratingDifference =
+          getRatingValue(b) - getRatingValue(a);
 
-          if (ratingDifference !== 0) {
-            return ratingDifference;
-          }
-
-          return (
-            Number(
-              b.googleUserRatingCount || 0
-            ) -
-            Number(
-              a.googleUserRatingCount || 0
-            )
-          );
+        if (ratingDifference !== 0) {
+          return ratingDifference;
         }
-      );
+
+        return (
+          Number(b.googleUserRatingCount || 0) -
+          Number(a.googleUserRatingCount || 0)
+        );
+      });
     }
 
     return copiedRestaurants.sort(
@@ -504,15 +434,9 @@ export default function Home() {
         getRestaurantDistance(a) -
         getRestaurantDistance(b)
     );
-  }, [
-    restaurants,
-    sortType,
-    userLocation,
-  ]);
+  }, [restaurants, sortType, userLocation]);
 
-  async function loadSmokingStatuses(
-    restaurantList
-  ) {
+  async function loadSmokingStatuses(restaurantList) {
     if (restaurantList.length === 0) {
       return restaurantList;
     }
@@ -523,21 +447,17 @@ export default function Home() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            restaurantIds:
-              restaurantList.map(
-                (restaurant) =>
-                  restaurant.id
-              ),
+            restaurantIds: restaurantList.map(
+              (restaurant) => restaurant.id
+            ),
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -546,43 +466,32 @@ export default function Home() {
         );
       }
 
-      const statuses =
-        data.statuses || {};
+      const statuses = data.statuses || {};
 
-      return restaurantList.map(
-        (restaurant) => {
-          const status =
-            statuses[
-              String(restaurant.id)
-            ];
+      return restaurantList.map((restaurant) => {
+        const status =
+          statuses[String(restaurant.id)];
 
-          return {
-            ...restaurant,
-            latestSmokingReportAt:
-              status?.latestCreatedAt ||
-              null,
-            latestSmokingReportStatus:
-              status?.latestStatus ||
-              null,
-          };
-        }
-      );
+        return {
+          ...restaurant,
+          latestSmokingReportAt:
+            status?.latestCreatedAt || null,
+          latestSmokingReportStatus:
+            status?.latestStatus || null,
+        };
+      });
     } catch (err) {
       console.error(err);
 
-      return restaurantList.map(
-        (restaurant) => ({
-          ...restaurant,
-          latestSmokingReportAt: null,
-          latestSmokingReportStatus: null,
-        })
-      );
+      return restaurantList.map((restaurant) => ({
+        ...restaurant,
+        latestSmokingReportAt: null,
+        latestSmokingReportStatus: null,
+      }));
     }
   }
 
-  async function loadGoogleRatings(
-    restaurantList
-  ) {
+  async function loadGoogleRatings(restaurantList) {
     if (restaurantList.length === 0) {
       return restaurantList;
     }
@@ -593,25 +502,21 @@ export default function Home() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            restaurants:
-              restaurantList.map(
-                (restaurant) => ({
-                  id: restaurant.id,
-                  name: restaurant.name,
-                  address:
-                    restaurant.address,
-                })
-              ),
+            restaurants: restaurantList.map(
+              (restaurant) => ({
+                id: restaurant.id,
+                name: restaurant.name,
+                address: restaurant.address,
+              })
+            ),
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -620,45 +525,35 @@ export default function Home() {
         );
       }
 
-      const ratings =
-        data.ratings || {};
+      const ratings = data.ratings || {};
 
-      return restaurantList.map(
-        (restaurant) => {
-          const rating =
-            ratings[
-              String(restaurant.id)
-            ];
+      return restaurantList.map((restaurant) => {
+        const rating =
+          ratings[String(restaurant.id)];
 
-          return {
-            ...restaurant,
-            googlePlaceId:
-              rating?.placeId || null,
-            googleRating:
-              typeof rating?.rating ===
-              "number"
-                ? rating.rating
-                : null,
-            googleUserRatingCount:
-              typeof rating
-                ?.userRatingCount ===
-              "number"
-                ? rating.userRatingCount
-                : 0,
-          };
-        }
-      );
+        return {
+          ...restaurant,
+          googlePlaceId:
+            rating?.placeId || null,
+          googleRating:
+            typeof rating?.rating === "number"
+              ? rating.rating
+              : null,
+          googleUserRatingCount:
+            typeof rating?.userRatingCount === "number"
+              ? rating.userRatingCount
+              : 0,
+        };
+      });
     } catch (err) {
       console.error(err);
 
-      return restaurantList.map(
-        (restaurant) => ({
-          ...restaurant,
-          googlePlaceId: null,
-          googleRating: null,
-          googleUserRatingCount: 0,
-        })
-      );
+      return restaurantList.map((restaurant) => ({
+        ...restaurant,
+        googlePlaceId: null,
+        googleRating: null,
+        googleUserRatingCount: 0,
+      }));
     }
   }
 
@@ -670,17 +565,14 @@ export default function Home() {
     const response = await fetch(
       `/api/restaurants?lat=${encodeURIComponent(
         lat
-      )}&lng=${encodeURIComponent(
-        lng
-      )}`
+      )}&lng=${encodeURIComponent(lng)}`
     );
 
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error(
-        data.error ||
-          "店舗検索に失敗しました"
+        data.error || "店舗検索に失敗しました"
       );
     }
 
@@ -692,55 +584,36 @@ export default function Home() {
       restaurantsWithStatuses,
       restaurantsWithRatings,
     ] = await Promise.all([
-      loadSmokingStatuses(
-        filteredRestaurants
-      ),
-      loadGoogleRatings(
-        filteredRestaurants
-      ),
+      loadSmokingStatuses(filteredRestaurants),
+      loadGoogleRatings(filteredRestaurants),
     ]);
 
-    const ratingMap =
-      Object.fromEntries(
-        restaurantsWithRatings.map(
-          (restaurant) => [
-            String(restaurant.id),
-            restaurant,
-          ]
-        )
-      );
-
-    const completedRestaurants =
-      restaurantsWithStatuses.map(
-        (restaurant) => {
-          const ratingRestaurant =
-            ratingMap[
-              String(restaurant.id)
-            ];
-
-          return {
-            ...restaurant,
-            googlePlaceId:
-              ratingRestaurant
-                ?.googlePlaceId || null,
-            googleRating:
-              ratingRestaurant
-                ?.googleRating ?? null,
-            googleUserRatingCount:
-              ratingRestaurant
-                ?.googleUserRatingCount ||
-              0,
-          };
-        }
-      );
-
-    setRestaurants(
-      completedRestaurants
+    const ratingMap = Object.fromEntries(
+      restaurantsWithRatings.map((restaurant) => [
+        String(restaurant.id),
+        restaurant,
+      ])
     );
 
-    if (
-      filteredRestaurants.length === 0
-    ) {
+    const completedRestaurants =
+      restaurantsWithStatuses.map((restaurant) => {
+        const ratingRestaurant =
+          ratingMap[String(restaurant.id)];
+
+        return {
+          ...restaurant,
+          googlePlaceId:
+            ratingRestaurant?.googlePlaceId || null,
+          googleRating:
+            ratingRestaurant?.googleRating ?? null,
+          googleUserRatingCount:
+            ratingRestaurant?.googleUserRatingCount || 0,
+        };
+      });
+
+    setRestaurants(completedRestaurants);
+
+    if (filteredRestaurants.length === 0) {
       setError(
         selectedFilter === "all"
           ? emptyMessage
@@ -763,18 +636,14 @@ export default function Home() {
     setRestaurants([]);
     setSelectedRestaurant(null);
     setSearchAreaName("");
-    setLocationStatus(
-      "現在地を取得中..."
-    );
+    setSearchMode("current");
+    setLocationStatus("現在地を取得中...");
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const lat =
-            position.coords.latitude;
-
-          const lng =
-            position.coords.longitude;
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
 
           setUserLocation({
             lat,
@@ -832,6 +701,7 @@ export default function Home() {
     setError("");
     setRestaurants([]);
     setSelectedRestaurant(null);
+    setSearchMode("area");
 
     try {
       const areaResponse = await fetch(
@@ -840,8 +710,7 @@ export default function Home() {
         )}`
       );
 
-      const areaData =
-        await areaResponse.json();
+      const areaData = await areaResponse.json();
 
       if (!areaResponse.ok) {
         throw new Error(
@@ -889,9 +758,7 @@ export default function Home() {
     }
   }
 
-  async function loadSmokingStatus(
-    restaurantId
-  ) {
+  async function loadSmokingStatus(restaurantId) {
     setStatusLoading(true);
     setSmokingStatus(null);
 
@@ -902,8 +769,7 @@ export default function Home() {
         )}`
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -927,13 +793,8 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
 
-    addRestaurantToHistory(
-      restaurant
-    );
-
-    loadSmokingStatus(
-      restaurant.id
-    );
+    addRestaurantToHistory(restaurant);
+    loadSmokingStatus(restaurant.id);
 
     window.scrollTo({
       top: 0,
@@ -956,10 +817,7 @@ export default function Home() {
   async function submitSmokingReport(
     smokingStatusValue
   ) {
-    if (
-      !selectedRestaurant ||
-      reportLoading
-    ) {
+    if (!selectedRestaurant || reportLoading) {
       return;
     }
 
@@ -972,22 +830,18 @@ export default function Home() {
         {
           method: "POST",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            restaurantId:
-              selectedRestaurant.id,
+            restaurantId: selectedRestaurant.id,
             restaurantName:
               selectedRestaurant.name,
-            smokingStatus:
-              smokingStatusValue,
+            smokingStatus: smokingStatusValue,
           }),
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -996,31 +850,25 @@ export default function Home() {
         );
       }
 
-      setReportResult(
-        smokingStatusValue
-      );
+      setReportResult(smokingStatusValue);
 
       await loadSmokingStatus(
         selectedRestaurant.id
       );
 
-      setRestaurants(
-        (currentRestaurants) =>
-          currentRestaurants.map(
-            (restaurant) =>
-              String(restaurant.id) ===
-              String(
-                selectedRestaurant.id
-              )
-                ? {
-                    ...restaurant,
-                    latestSmokingReportAt:
-                      new Date().toISOString(),
-                    latestSmokingReportStatus:
-                      smokingStatusValue,
-                  }
-                : restaurant
-          )
+      setRestaurants((currentRestaurants) =>
+        currentRestaurants.map((restaurant) =>
+          String(restaurant.id) ===
+          String(selectedRestaurant.id)
+            ? {
+                ...restaurant,
+                latestSmokingReportAt:
+                  new Date().toISOString(),
+                latestSmokingReportStatus:
+                  smokingStatusValue,
+              }
+            : restaurant
+        )
       );
     } catch (err) {
       setReportError(err.message);
@@ -1030,37 +878,29 @@ export default function Home() {
   }
 
   function formatTimeAgo(dateString) {
-    if (!dateString) {
-      return "";
-    }
+    if (!dateString) return "";
 
-    const date =
-      new Date(dateString);
-
+    const date = new Date(dateString);
     const now = new Date();
 
     const difference =
-      now.getTime() -
-      date.getTime();
+      now.getTime() - date.getTime();
 
     if (difference < 0) {
       return "たった今";
     }
 
-    const minutes =
-      Math.floor(
-        difference / 60000
-      );
+    const minutes = Math.floor(
+      difference / 60000
+    );
 
-    const hours =
-      Math.floor(
-        difference / 3600000
-      );
+    const hours = Math.floor(
+      difference / 3600000
+    );
 
-    const days =
-      Math.floor(
-        difference / 86400000
-      );
+    const days = Math.floor(
+      difference / 86400000
+    );
 
     if (minutes < 1) {
       return "たった今";
@@ -1078,9 +918,7 @@ export default function Home() {
       return `${days}日前`;
     }
 
-    return date.toLocaleDateString(
-      "ja-JP"
-    );
+    return date.toLocaleDateString("ja-JP");
   }
 
   function latestReportText(status) {
@@ -1099,9 +937,7 @@ export default function Home() {
     return "情報なし";
   }
 
-  function smokingTypeText(
-    restaurant
-  ) {
+  function smokingTypeText(restaurant) {
     if (
       restaurant.smokingType ===
       "smoking_candidate"
@@ -1127,11 +963,8 @@ export default function Home() {
   }
 
   function getMapUrl(restaurant) {
-    const lat =
-      Number(restaurant.lat);
-
-    const lng =
-      Number(restaurant.lng);
+    const lat = Number(restaurant.lat);
+    const lng = Number(restaurant.lng);
 
     if (
       !Number.isFinite(lat) ||
@@ -1142,9 +975,7 @@ export default function Home() {
 
     return `/api/google-map?lat=${encodeURIComponent(
       lat
-    )}&lng=${encodeURIComponent(
-      lng
-    )}`;
+    )}&lng=${encodeURIComponent(lng)}`;
   }
 
   function getResultsMapUrl() {
@@ -1155,15 +986,14 @@ export default function Home() {
       return "";
     }
 
-    const mapRestaurants =
-      restaurants.map(
-        (restaurant) => ({
-          id: restaurant.id,
-          name: restaurant.name,
-          lat: restaurant.lat,
-          lng: restaurant.lng,
-        })
-      );
+    const mapRestaurants = restaurants.map(
+      (restaurant) => ({
+        id: restaurant.id,
+        name: restaurant.name,
+        lat: restaurant.lat,
+        lng: restaurant.lng,
+      })
+    );
 
     return (
       `/api/results-map` +
@@ -1173,22 +1003,18 @@ export default function Home() {
       `&lng=${encodeURIComponent(
         userLocation.lng
       )}` +
+      `&showCurrentLocation=${
+        searchMode === "current" ? "true" : "false"
+      }` +
       `&restaurants=${encodeURIComponent(
-        JSON.stringify(
-          mapRestaurants
-        )
+        JSON.stringify(mapRestaurants)
       )}`
     );
   }
 
-  function getDirectionsUrl(
-    restaurant
-  ) {
-    const lat =
-      Number(restaurant.lat);
-
-    const lng =
-      Number(restaurant.lng);
+  function getDirectionsUrl(restaurant) {
+    const lat = Number(restaurant.lat);
+    const lng = Number(restaurant.lng);
 
     if (
       !Number.isFinite(lat) ||
@@ -1202,9 +1028,7 @@ export default function Home() {
     )}`;
   }
 
-  function renderBottomNav(
-    activeMode
-  ) {
+  function renderBottomNav(activeMode) {
     return (
       <nav className="bottomNav">
         <button
@@ -1253,19 +1077,13 @@ export default function Home() {
 
   if (selectedRestaurant) {
     const mapUrl =
-      getMapUrl(
-        selectedRestaurant
-      );
+      getMapUrl(selectedRestaurant);
 
     const directionsUrl =
-      getDirectionsUrl(
-        selectedRestaurant
-      );
+      getDirectionsUrl(selectedRestaurant);
 
     const selectedIsFavorite =
-      isFavorite(
-        selectedRestaurant.id
-      );
+      isFavorite(selectedRestaurant.id);
 
     return (
       <main className="home">
@@ -1293,9 +1111,7 @@ export default function Home() {
             </span>
           </div>
 
-          <h1>
-            {selectedRestaurant.name}
-          </h1>
+          <h1>{selectedRestaurant.name}</h1>
 
           <p className="description">
             {selectedRestaurant.genre ||
@@ -1304,26 +1120,21 @@ export default function Home() {
 
           <button
             onClick={() =>
-              toggleFavorite(
-                selectedRestaurant
-              )
+              toggleFavorite(selectedRestaurant)
             }
             style={{
               minHeight: "48px",
               padding: "0 18px",
-              border:
-                selectedIsFavorite
-                  ? "1px solid #151515"
-                  : "1px solid #dddddd",
+              border: selectedIsFavorite
+                ? "1px solid #151515"
+                : "1px solid #dddddd",
               borderRadius: "14px",
-              background:
-                selectedIsFavorite
-                  ? "#151515"
-                  : "#ffffff",
-              color:
-                selectedIsFavorite
-                  ? "#ffffff"
-                  : "#151515",
+              background: selectedIsFavorite
+                ? "#151515"
+                : "#ffffff",
+              color: selectedIsFavorite
+                ? "#ffffff"
+                : "#151515",
               fontWeight: "800",
             }}
           >
@@ -1334,15 +1145,12 @@ export default function Home() {
         </section>
 
         <section className="filterSection">
-          {selectedRestaurant.googleRating !==
-            null &&
+          {selectedRestaurant.googleRating !== null &&
             selectedRestaurant.googleRating !==
               undefined && (
               <div className="trustBox">
                 <div>
-                  <strong>
-                    ⭐ Google評価
-                  </strong>
+                  <strong>⭐ Google評価</strong>
 
                   <p>
                     ⭐{" "}
@@ -1359,9 +1167,7 @@ export default function Home() {
             )}
 
           <div className="trustBox">
-            <div className="trustIcon">
-              ✓
-            </div>
+            <div className="trustIcon">✓</div>
 
             <div>
               <strong>
@@ -1389,20 +1195,16 @@ export default function Home() {
                 <p>
                   最終確認：
                   {formatTimeAgo(
-                    smokingStatus
-                      .latestReport
+                    smokingStatus.latestReport
                       .created_at
                   )}
                   <br />
-
                   最新報告：
                   {latestReportText(
-                    smokingStatus
-                      .latestReport
+                    smokingStatus.latestReport
                       .smoking_status
                   )}
                   <br />
-
                   直近
                   {smokingStatus.total}
                   件中
@@ -1459,8 +1261,7 @@ export default function Home() {
                     marginBottom: "5px",
                   }}
                 >
-                  📍{" "}
-                  {selectedRestaurant.name}
+                  📍 {selectedRestaurant.name}
                 </strong>
 
                 <p
@@ -1483,18 +1284,13 @@ export default function Home() {
                     style={{
                       display: "flex",
                       minHeight: "50px",
-                      alignItems:
-                        "center",
-                      justifyContent:
-                        "center",
-                      borderRadius:
-                        "14px",
-                      background:
-                        "#151515",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "14px",
+                      background: "#151515",
                       color: "#ffffff",
                       fontWeight: "800",
-                      textDecoration:
-                        "none",
+                      textDecoration: "none",
                     }}
                   >
                     📍 Googleマップで経路を見る
@@ -1506,10 +1302,7 @@ export default function Home() {
 
           <div className="trustBox">
             <div>
-              <strong>
-                営業時間
-              </strong>
-
+              <strong>営業時間</strong>
               <p>
                 {selectedRestaurant.open ||
                   "情報なし"}
@@ -1519,10 +1312,7 @@ export default function Home() {
 
           <div className="trustBox">
             <div>
-              <strong>
-                予算
-              </strong>
-
+              <strong>予算</strong>
               <p>
                 {selectedRestaurant.budget ||
                   "情報なし"}
@@ -1572,18 +1362,14 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  disabled={
-                    reportLoading
-                  }
+                  disabled={reportLoading}
                   onClick={() =>
                     submitSmokingReport(
                       "paper_ok"
                     )
                   }
                 >
-                  <span>
-                    🚬 紙巻き吸えた
-                  </span>
+                  <span>🚬 紙巻き吸えた</span>
                 </button>
 
                 <button
@@ -1592,9 +1378,7 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  disabled={
-                    reportLoading
-                  }
+                  disabled={reportLoading}
                   onClick={() =>
                     submitSmokingReport(
                       "heated_only"
@@ -1612,29 +1396,22 @@ export default function Home() {
                     width: "100%",
                     minHeight: "60px",
                   }}
-                  disabled={
-                    reportLoading
-                  }
+                  disabled={reportLoading}
                   onClick={() =>
                     submitSmokingReport(
                       "not_allowed"
                     )
                   }
                 >
-                  <span>
-                    🚭 吸えなかった
-                  </span>
+                  <span>🚭 吸えなかった</span>
                 </button>
 
                 {reportLoading && (
                   <p
                     style={{
-                      margin:
-                        "5px 0 0",
-                      color:
-                        "#737373",
-                      fontSize:
-                        "13px",
+                      margin: "5px 0 0",
+                      color: "#737373",
+                      fontSize: "13px",
                     }}
                   >
                     保存中...
@@ -1644,12 +1421,9 @@ export default function Home() {
                 {reportError && (
                   <p
                     style={{
-                      margin:
-                        "5px 0 0",
-                      color:
-                        "#b00020",
-                      fontSize:
-                        "13px",
+                      margin: "5px 0 0",
+                      color: "#b00020",
+                      fontSize: "13px",
                     }}
                   >
                     {reportError}
@@ -1685,9 +1459,7 @@ export default function Home() {
           {selectedRestaurant.urls && (
             <a
               className="searchButton"
-              href={
-                selectedRestaurant.urls
-              }
+              href={selectedRestaurant.urls}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -1696,9 +1468,7 @@ export default function Home() {
           )}
         </section>
 
-        {renderBottomNav(
-          viewMode
-        )}
+        {renderBottomNav(viewMode)}
       </main>
     );
   }
@@ -1723,14 +1493,10 @@ export default function Home() {
         <section className="hero">
           <div className="location">
             <span>♡</span>
-            <span>
-              保存したお店
-            </span>
+            <span>保存したお店</span>
           </div>
 
-          <h1>
-            お気に入り
-          </h1>
+          <h1>お気に入り</h1>
 
           <p className="description">
             気になるお店を保存して、
@@ -1762,115 +1528,91 @@ export default function Home() {
               </p>
 
               <div>
-                {favorites.map(
-                  (restaurant) => (
-                    <div
-                      className="trustBox"
-                      key={
-                        restaurant.id
+                {favorites.map((restaurant) => (
+                  <div
+                    className="trustBox"
+                    key={restaurant.id}
+                    style={{
+                      position: "relative",
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        openRestaurant(restaurant)
                       }
                       style={{
-                        position:
-                          "relative",
+                        flex: 1,
+                        padding: 0,
+                        border: 0,
+                        background: "transparent",
+                        textAlign: "left",
+                        cursor: "pointer",
                       }}
                     >
-                      <button
-                        onClick={() =>
-                          openRestaurant(
-                            restaurant
-                          )
-                        }
-                        style={{
-                          flex: 1,
-                          padding: 0,
-                          border: 0,
-                          background:
-                            "transparent",
-                          textAlign:
-                            "left",
-                          cursor:
-                            "pointer",
-                        }}
-                      >
-                        <strong>
-                          {
-                            restaurant.name
-                          }
-                        </strong>
+                      <strong>
+                        {restaurant.name}
+                      </strong>
 
-                        <p>
-                          {restaurant.genre ||
-                            "ジャンル情報なし"}
-                          <br />
+                      <p>
+                        {restaurant.genre ||
+                          "ジャンル情報なし"}
+                        <br />
 
-                          🚬{" "}
-                          {restaurant.smoking ||
-                            "喫煙情報なし"}
-                          <br />
+                        🚬{" "}
+                        {restaurant.smoking ||
+                          "喫煙情報なし"}
+                        <br />
 
-                          ⭐{" "}
-                          {restaurant.googleRating !==
-                            null &&
-                          restaurant.googleRating !==
-                            undefined
-                            ? `${Number(
-                                restaurant.googleRating
-                              ).toFixed(
-                                1
-                              )}（${
-                                restaurant.googleUserRatingCount ||
-                                0
-                              }件）`
-                            : "Google評価なし"}
-                          <br />
+                        ⭐{" "}
+                        {restaurant.googleRating !==
+                          null &&
+                        restaurant.googleRating !==
+                          undefined
+                          ? `${Number(
+                              restaurant.googleRating
+                            ).toFixed(1)}（${
+                              restaurant.googleUserRatingCount ||
+                              0
+                            }件）`
+                          : "Google評価なし"}
+                        <br />
 
-                          💰{" "}
-                          {restaurant.budget ||
-                            "予算情報なし"}
-                          <br />
+                        💰{" "}
+                        {restaurant.budget ||
+                          "予算情報なし"}
+                        <br />
 
-                          {restaurant.address ||
-                            "住所情報なし"}
-                        </p>
-                      </button>
+                        {restaurant.address ||
+                          "住所情報なし"}
+                      </p>
+                    </button>
 
-                      <button
-                        onClick={() =>
-                          toggleFavorite(
-                            restaurant
-                          )
-                        }
-                        aria-label="お気に入りから削除"
-                        style={{
-                          flex:
-                            "0 0 42px",
-                          width:
-                            "42px",
-                          height:
-                            "42px",
-                          border:
-                            "1px solid #dddddd",
-                          borderRadius:
-                            "12px",
-                          background:
-                            "#ffffff",
-                          fontSize:
-                            "20px",
-                        }}
-                      >
-                        ♥
-                      </button>
-                    </div>
-                  )
-                )}
+                    <button
+                      onClick={() =>
+                        toggleFavorite(restaurant)
+                      }
+                      aria-label="お気に入りから削除"
+                      style={{
+                        flex: "0 0 42px",
+                        width: "42px",
+                        height: "42px",
+                        border:
+                          "1px solid #dddddd",
+                        borderRadius: "12px",
+                        background: "#ffffff",
+                        fontSize: "20px",
+                      }}
+                    >
+                      ♥
+                    </button>
+                  </div>
+                ))}
               </div>
             </>
           )}
         </section>
 
-        {renderBottomNav(
-          "favorites"
-        )}
+        {renderBottomNav("favorites")}
       </main>
     );
   }
@@ -1895,14 +1637,10 @@ export default function Home() {
         <section className="hero">
           <div className="location">
             <span>☷</span>
-            <span>
-              最近見たお店
-            </span>
+            <span>最近見たお店</span>
           </div>
 
-          <h1>
-            閲覧履歴
-          </h1>
+          <h1>閲覧履歴</h1>
 
           <p className="description">
             最近チェックしたお店を
@@ -1930,44 +1668,32 @@ export default function Home() {
               <div
                 style={{
                   display: "flex",
-                  alignItems:
-                    "center",
+                  alignItems: "center",
                   justifyContent:
                     "space-between",
                   gap: "12px",
-                  marginBottom:
-                    "14px",
+                  marginBottom: "14px",
                 }}
               >
                 <p
                   className="filterTitle"
-                  style={{
-                    margin: 0,
-                  }}
+                  style={{ margin: 0 }}
                 >
                   最近見たお店（
                   {history.length}件）
                 </p>
 
                 <button
-                  onClick={
-                    clearHistory
-                  }
+                  onClick={clearHistory}
                   style={{
                     border:
                       "1px solid #dddddd",
-                    borderRadius:
-                      "12px",
-                    background:
-                      "#ffffff",
-                    padding:
-                      "10px 12px",
-                    color:
-                      "#737373",
-                    fontSize:
-                      "12px",
-                    fontWeight:
-                      "700",
+                    borderRadius: "12px",
+                    background: "#ffffff",
+                    padding: "10px 12px",
+                    color: "#737373",
+                    fontSize: "12px",
+                    fontWeight: "700",
                   }}
                 >
                   履歴を削除
@@ -1975,91 +1701,75 @@ export default function Home() {
               </div>
 
               <div>
-                {history.map(
-                  (restaurant) => (
-                    <button
-                      className="trustBox"
-                      key={
-                        restaurant.id
-                      }
-                      onClick={() =>
-                        openRestaurant(
-                          restaurant
-                        )
-                      }
-                      style={{
-                        width:
-                          "calc(100% - 44px)",
-                        border:
-                          "none",
-                        textAlign:
-                          "left",
-                        cursor:
-                          "pointer",
-                      }}
-                    >
-                      <div>
-                        <strong>
-                          {
-                            restaurant.name
-                          }
-                        </strong>
+                {history.map((restaurant) => (
+                  <button
+                    className="trustBox"
+                    key={restaurant.id}
+                    onClick={() =>
+                      openRestaurant(restaurant)
+                    }
+                    style={{
+                      width:
+                        "calc(100% - 44px)",
+                      border: "none",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div>
+                      <strong>
+                        {restaurant.name}
+                      </strong>
 
-                        <p>
-                          {restaurant.genre ||
-                            "ジャンル情報なし"}
-                          <br />
+                      <p>
+                        {restaurant.genre ||
+                          "ジャンル情報なし"}
+                        <br />
 
-                          🚬{" "}
-                          {restaurant.smoking ||
-                            "喫煙情報なし"}
-                          <br />
+                        🚬{" "}
+                        {restaurant.smoking ||
+                          "喫煙情報なし"}
+                        <br />
 
-                          ⭐{" "}
-                          {restaurant.googleRating !==
-                            null &&
-                          restaurant.googleRating !==
-                            undefined
-                            ? `${Number(
-                                restaurant.googleRating
-                              ).toFixed(
-                                1
-                              )}（${
-                                restaurant.googleUserRatingCount ||
-                                0
-                              }件）`
-                            : "Google評価なし"}
-                          <br />
+                        ⭐{" "}
+                        {restaurant.googleRating !==
+                          null &&
+                        restaurant.googleRating !==
+                          undefined
+                          ? `${Number(
+                              restaurant.googleRating
+                            ).toFixed(1)}（${
+                              restaurant.googleUserRatingCount ||
+                              0
+                            }件）`
+                          : "Google評価なし"}
+                        <br />
 
-                          🕒{" "}
-                          {restaurant.viewedAt
-                            ? `${formatTimeAgo(
-                                restaurant.viewedAt
-                              )}に閲覧`
-                            : ""}
-                          <br />
+                        🕒{" "}
+                        {restaurant.viewedAt
+                          ? `${formatTimeAgo(
+                              restaurant.viewedAt
+                            )}に閲覧`
+                          : ""}
+                        <br />
 
-                          {restaurant.address ||
-                            "住所情報なし"}
-                        </p>
-                      </div>
-                    </button>
-                  )
-                )}
+                        {restaurant.address ||
+                          "住所情報なし"}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </>
           )}
         </section>
 
-        {renderBottomNav(
-          "history"
-        )}
+        {renderBottomNav("history")}
       </main>
     );
   }
 
-  const resultsMapUrl =
-    getResultsMapUrl();
+  const resultsMapUrl = getResultsMapUrl();
 
   return (
     <main className="home">
@@ -2101,9 +1811,7 @@ export default function Home() {
             type="search"
             value={areaQuery}
             onChange={(event) =>
-              setAreaQuery(
-                event.target.value
-              )
+              setAreaQuery(event.target.value)
             }
             placeholder="新宿・池袋・渋谷など"
             aria-label="エリア名"
@@ -2172,9 +1880,7 @@ export default function Home() {
           }}
         >
           <span>📍</span>
-          <span>
-            {locationStatus}
-          </span>
+          <span>{locationStatus}</span>
         </button>
       </section>
 
@@ -2184,40 +1890,30 @@ export default function Home() {
         </p>
 
         <div className="filterGrid">
-          {filters.map(
-            (filter) => (
-              <button
-                key={filter.id}
-                className="filterCard"
-                onClick={() =>
-                  toggleFilter(
-                    filter.id
-                  )
-                }
-                style={
-                  selectedFilter ===
-                  filter.id
-                    ? {
-                        background:
-                          "#151515",
-                        color:
-                          "#ffffff",
-                        borderColor:
-                          "#151515",
-                      }
-                    : undefined
-                }
-              >
-                <span className="filterIcon">
-                  {filter.icon}
-                </span>
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              className="filterCard"
+              onClick={() =>
+                toggleFilter(filter.id)
+              }
+              style={
+                selectedFilter === filter.id
+                  ? {
+                      background: "#151515",
+                      color: "#ffffff",
+                      borderColor: "#151515",
+                    }
+                  : undefined
+              }
+            >
+              <span className="filterIcon">
+                {filter.icon}
+              </span>
 
-                <span>
-                  {filter.label}
-                </span>
-              </button>
-            )
-          )}
+              <span>{filter.label}</span>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -2256,14 +1952,10 @@ export default function Home() {
           {searchAreaName && (
             <p
               style={{
-                margin:
-                  "0 0 12px",
-                color:
-                  "#737373",
-                fontSize:
-                  "13px",
-                fontWeight:
-                  "700",
+                margin: "0 0 12px",
+                color: "#737373",
+                fontSize: "13px",
+                fontWeight: "700",
               }}
             >
               📍 {searchAreaName} 周辺
@@ -2291,28 +1983,20 @@ export default function Home() {
             <select
               value={sortType}
               onChange={(event) =>
-                setSortType(
-                  event.target.value
-                )
+                setSortType(event.target.value)
               }
               aria-label="並び替え"
               style={{
                 minHeight: "42px",
                 maxWidth: "220px",
-                padding:
-                  "0 10px",
+                padding: "0 10px",
                 border:
                   "1px solid #dddddd",
-                borderRadius:
-                  "12px",
-                background:
-                  "#ffffff",
-                color:
-                  "#151515",
-                fontSize:
-                  "13px",
-                fontWeight:
-                  "700",
+                borderRadius: "12px",
+                background: "#ffffff",
+                color: "#151515",
+                fontSize: "13px",
+                fontWeight: "700",
               }}
             >
               <option value="distance">
@@ -2362,94 +2046,79 @@ export default function Home() {
           )}
 
           <div>
-            {sortedRestaurants.map(
-              (restaurant) => {
-                const distance =
-                  getRestaurantDistance(
-                    restaurant
-                  );
+            {sortedRestaurants.map((restaurant) => {
+              const distance =
+                getRestaurantDistance(restaurant);
 
-                return (
-                  <button
-                    className="trustBox"
-                    key={
-                      restaurant.id
-                    }
-                    onClick={() =>
-                      openRestaurant(
-                        restaurant
-                      )
-                    }
-                    style={{
-                      width:
-                        "calc(100% - 44px)",
-                      border:
-                        "none",
-                      textAlign:
-                        "left",
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    <div>
-                      <strong>
-                        {
-                          restaurant.name
-                        }
-                      </strong>
+              return (
+                <button
+                  className="trustBox"
+                  key={restaurant.id}
+                  onClick={() =>
+                    openRestaurant(restaurant)
+                  }
+                  style={{
+                    width:
+                      "calc(100% - 44px)",
+                    border: "none",
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div>
+                    <strong>
+                      {restaurant.name}
+                    </strong>
 
-                      <p>
-                        📍{" "}
-                        {formatDistance(
-                          distance
-                        )}
-                        <br />
+                    <p>
+                      📍{" "}
+                      {searchMode === "area" &&
+                      searchAreaName
+                        ? `${searchAreaName}から `
+                        : ""}
+                      {formatDistance(distance)}
+                      <br />
 
-                        {restaurant.genre}
-                        <br />
+                      {restaurant.genre}
+                      <br />
 
-                        🚬{" "}
-                        {restaurant.smoking}
-                        <br />
+                      🚬{" "}
+                      {restaurant.smoking}
+                      <br />
 
-                        🕒{" "}
-                        {restaurant.latestSmokingReportAt
-                          ? `ユーザー確認 ${formatTimeAgo(
-                              restaurant.latestSmokingReportAt
-                            )}`
-                          : "ユーザー確認なし"}
-                        <br />
+                      🕒{" "}
+                      {restaurant.latestSmokingReportAt
+                        ? `ユーザー確認 ${formatTimeAgo(
+                            restaurant.latestSmokingReportAt
+                          )}`
+                        : "ユーザー確認なし"}
+                      <br />
 
-                        ⭐{" "}
-                        {restaurant.googleRating !==
-                          null &&
-                        restaurant.googleRating !==
-                          undefined
-                          ? `${Number(
-                              restaurant.googleRating
-                            ).toFixed(
-                              1
-                            )}（${
-                              restaurant.googleUserRatingCount ||
-                              0
-                            }件）`
-                          : "Google評価なし"}
-                        <br />
+                      ⭐{" "}
+                      {restaurant.googleRating !==
+                        null &&
+                      restaurant.googleRating !==
+                        undefined
+                        ? `${Number(
+                            restaurant.googleRating
+                          ).toFixed(1)}（${
+                            restaurant.googleUserRatingCount ||
+                            0
+                          }件）`
+                        : "Google評価なし"}
+                      <br />
 
-                        💰{" "}
-                        {restaurant.budget ||
-                          "予算情報なし"}
-                        <br />
+                      💰{" "}
+                      {restaurant.budget ||
+                        "予算情報なし"}
+                      <br />
 
-                        {
-                          restaurant.address
-                        }
-                      </p>
-                    </div>
-                  </button>
-                );
-              }
-            )}
+                      {restaurant.address}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
@@ -2471,9 +2140,7 @@ export default function Home() {
         </div>
       </section>
 
-      {renderBottomNav(
-        "search"
-      )}
+      {renderBottomNav("search")}
     </main>
   );
 }
