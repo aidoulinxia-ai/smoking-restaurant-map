@@ -40,9 +40,12 @@ export async function GET(request) {
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
 
+    const keyword =
+      searchParams.get("keyword")?.trim() || "";
+
     if (!lat || !lng) {
       return NextResponse.json(
-        { error: "現在地が必要です" },
+        { error: "検索地点が必要です" },
         { status: 400 }
       );
     }
@@ -64,6 +67,10 @@ export async function GET(request) {
       count: "100",
       format: "json",
     });
+
+    if (keyword) {
+      params.set("keyword", keyword);
+    }
 
     const response = await fetch(
       `https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?${params.toString()}`,
@@ -119,6 +126,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       count: restaurants.length,
+      keyword,
       smokingSummary,
       restaurants,
     });
