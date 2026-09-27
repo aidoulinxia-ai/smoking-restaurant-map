@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import BottomNav from "../components/BottomNav";
 
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
@@ -211,7 +212,6 @@ export default function Home() {
     setReportResult("");
     setReportError("");
     setSmokingStatus(null);
-
     scrollToTop();
   }
 
@@ -221,7 +221,6 @@ export default function Home() {
     setReportResult("");
     setReportError("");
     setSmokingStatus(null);
-
     scrollToTop();
   }
 
@@ -231,7 +230,6 @@ export default function Home() {
     setReportResult("");
     setReportError("");
     setSmokingStatus(null);
-
     scrollToTop();
   }
 
@@ -354,7 +352,6 @@ export default function Home() {
 
   function getRatingValue(restaurant) {
     const rating = Number(restaurant.googleRating);
-
     return Number.isFinite(rating) ? rating : -1;
   }
 
@@ -750,7 +747,6 @@ export default function Home() {
     setReportResult("");
     setReportError("");
     setSmokingStatus(null);
-
     scrollToTop();
   }
 
@@ -926,46 +922,11 @@ export default function Home() {
     )}`;
   }
 
-  function renderBottomNav(activeMode) {
-    return (
-      <nav className="bottomNav">
-        <button
-          className={
-            activeMode === "search" ? "navActive" : ""
-          }
-          onClick={showSearch}
-        >
-          <span>⌖</span>
-          <small>探す</small>
-        </button>
-
-        <button
-          className={
-            activeMode === "favorites" ? "navActive" : ""
-          }
-          onClick={showFavorites}
-        >
-          <span>♡</span>
-          <small>お気に入り</small>
-        </button>
-
-        <button
-          className={
-            activeMode === "history" ? "navActive" : ""
-          }
-          onClick={showHistory}
-        >
-          <span>☷</span>
-          <small>履歴</small>
-        </button>
-
-        <button>
-          <span>○</span>
-          <small>マイページ</small>
-        </button>
-      </nav>
-    );
-  }
+  const bottomNavProps = {
+    onSearch: showSearch,
+    onFavorites: showFavorites,
+    onHistory: showHistory,
+  };
 
   if (selectedRestaurant) {
     const mapUrl = getMapUrl(selectedRestaurant);
@@ -1030,7 +991,6 @@ export default function Home() {
               <div className="trustBox">
                 <div>
                   <strong>⭐ Google評価</strong>
-
                   <p>
                     ⭐{" "}
                     {Number(
@@ -1046,10 +1006,8 @@ export default function Home() {
 
           <div className="trustBox">
             <div className="trustIcon">✓</div>
-
             <div>
               <strong>掲載情報</strong>
-
               <p>
                 {selectedRestaurant.smoking || "喫煙情報なし"}
               </p>
@@ -1289,7 +1247,6 @@ export default function Home() {
                 }}
               >
                 <strong>✓ 報告ありがとう</strong>
-
                 <p
                   style={{
                     margin: "8px 0 0",
@@ -1315,7 +1272,10 @@ export default function Home() {
           )}
         </section>
 
-        {renderBottomNav(viewMode)}
+        <BottomNav
+          activeMode={viewMode}
+          {...bottomNavProps}
+        />
       </main>
     );
   }
@@ -1355,7 +1315,6 @@ export default function Home() {
             <div className="trustBox">
               <div>
                 <strong>まだお気に入りはありません</strong>
-
                 <p>
                   店舗詳細の「♡ お気に入りに追加」から保存できます。
                 </p>
@@ -1429,7 +1388,10 @@ export default function Home() {
           )}
         </section>
 
-        {renderBottomNav("favorites")}
+        <BottomNav
+          activeMode="favorites"
+          {...bottomNavProps}
+        />
       </main>
     );
   }
@@ -1469,7 +1431,6 @@ export default function Home() {
             <div className="trustBox">
               <div>
                 <strong>まだ履歴はありません</strong>
-
                 <p>
                   お店の詳細を見ると、ここに自動で保存されます。
                 </p>
@@ -1556,7 +1517,10 @@ export default function Home() {
           )}
         </section>
 
-        {renderBottomNav("history")}
+        <BottomNav
+          activeMode="history"
+          {...bottomNavProps}
+        />
       </main>
     );
   }
@@ -1839,7 +1803,10 @@ export default function Home() {
         </div>
       </section>
 
-      {renderBottomNav("search")}
+      <BottomNav
+        activeMode="search"
+        {...bottomNavProps}
+      />
     </main>
   );
 }
