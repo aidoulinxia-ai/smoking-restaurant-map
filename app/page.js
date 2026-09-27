@@ -37,6 +37,9 @@ export default function Home() {
   const [history, setHistory] = useState([]);
   const [favorites, setFavorites] = useState([]);
 
+  const [authLoading, setAuthLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+
   const filters = [
     {
       id: "paper",
@@ -94,6 +97,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
     function handleMapMessage(event) {
       if (event.origin !== window.location.origin) {
         return;
@@ -128,6 +135,88 @@ export default function Home() {
       );
     };
   }, [restaurants]);
+
+  async function checkAuth() {
+    setAuthLoading(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/me",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "ログイン情報を確認できませんでした"
+        );
+      }
+
+      if (data.loggedIn && data.user) {
+        setCurrentUser(data.user);
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (error) {
+      console.error(
+        "ログイン情報の確認に失敗しました",
+        error
+      );
+
+      setCurrentUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleAuthSuccess(user) {
+    if (user) {
+      setCurrentUser(user);
+    }
+
+    await checkAuth();
+  }
+
+  async function handleLogout() {
+    setAuthLoading(true);
+
+    try {
+      const response = await fetch(
+        "/api/auth/logout",
+        {
+          method: "POST",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "ログアウトできませんでした"
+        );
+      }
+
+      setCurrentUser(null);
+    } catch (error) {
+      console.error(
+        "ログアウトに失敗しました",
+        error
+      );
+
+      window.alert(
+        error.message ||
+          "ログアウトできませんでした"
+      );
+    } finally {
+      setAuthLoading(false);
+    }
+  }
 
   function saveHistory(nextHistory) {
     setHistory(nextHistory);
@@ -1392,6 +1481,18 @@ export default function Home() {
           }
           onOpenHistory={
             showHistory
+          }
+          authLoading={
+            authLoading
+          }
+          currentUser={
+            currentUser
+          }
+          onAuthSuccess={
+            handleAuthSuccess
+          }
+          onLogout={
+            handleLogout
           }
         />
 
