@@ -6,6 +6,7 @@ import FavoritesView from "../components/FavoritesView";
 import HistoryView from "../components/HistoryView";
 import RestaurantDetail from "../components/RestaurantDetail";
 import SearchView from "../components/SearchView";
+import MyPageView from "../components/MyPageView";
 
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
@@ -263,6 +264,15 @@ export default function Home() {
     scrollToTop();
   }
 
+  function showMyPage() {
+    setSelectedRestaurant(null);
+    setViewMode("mypage");
+    setReportResult("");
+    setReportError("");
+    setSmokingStatus(null);
+    scrollToTop();
+  }
+
   function toggleFilter(filterId) {
     setSelectedFilter((current) =>
       current === filterId ? "all" : filterId
@@ -278,8 +288,7 @@ export default function Home() {
 
     if (selectedFilter === "all") {
       return (
-        restaurant.smokingType !==
-          "non_smoking" &&
+        restaurant.smokingType !== "non_smoking" &&
         restaurant.smokingType !== "unknown"
       );
     }
@@ -289,24 +298,20 @@ export default function Home() {
       selectedFilter === "seat"
     ) {
       return (
-        restaurant.smokingType ===
-        "smoking_candidate"
+        restaurant.smokingType === "smoking_candidate"
       );
     }
 
     if (selectedFilter === "heated") {
       return (
-        restaurant.smokingType ===
-          "heated_candidate" ||
-        restaurant.smokingType ===
-          "smoking_candidate"
+        restaurant.smokingType === "heated_candidate" ||
+        restaurant.smokingType === "smoking_candidate"
       );
     }
 
     if (selectedFilter === "room") {
       return (
-        restaurant.smokingType ===
-        "smoking_room"
+        restaurant.smokingType === "smoking_room"
       );
     }
 
@@ -337,10 +342,7 @@ export default function Home() {
       Math.sin(latitudeDifference / 2) ** 2 +
       Math.cos(latitude1) *
         Math.cos(latitude2) *
-        Math.sin(
-          longitudeDifference / 2
-        ) **
-          2;
+        Math.sin(longitudeDifference / 2) ** 2;
 
     return (
       earthRadius *
@@ -384,9 +386,7 @@ export default function Home() {
       return `${Math.round(distance)}m`;
     }
 
-    return `${(distance / 1000).toFixed(
-      1
-    )}km`;
+    return `${(distance / 1000).toFixed(1)}km`;
   }
 
   function getBudgetValue(budgetText) {
@@ -406,9 +406,7 @@ export default function Home() {
   function getSmokingFreshnessValue(
     restaurant
   ) {
-    if (
-      !restaurant.latestSmokingReportAt
-    ) {
+    if (!restaurant.latestSmokingReportAt) {
       return 0;
     }
 
@@ -416,9 +414,7 @@ export default function Home() {
       restaurant.latestSmokingReportAt
     ).getTime();
 
-    return Number.isFinite(time)
-      ? time
-      : 0;
+    return Number.isFinite(time) ? time : 0;
   }
 
   function getRatingValue(restaurant) {
@@ -426,9 +422,7 @@ export default function Home() {
       restaurant.googleRating
     );
 
-    return Number.isFinite(rating)
-      ? rating
-      : -1;
+    return Number.isFinite(rating) ? rating : -1;
   }
 
   const sortedRestaurants = useMemo(() => {
@@ -459,20 +453,16 @@ export default function Home() {
             getRatingValue(b) -
             getRatingValue(a);
 
-          if (
-            ratingDifference !== 0
-          ) {
+          if (ratingDifference !== 0) {
             return ratingDifference;
           }
 
           return (
             Number(
-              b.googleUserRatingCount ||
-                0
+              b.googleUserRatingCount || 0
             ) -
             Number(
-              a.googleUserRatingCount ||
-                0
+              a.googleUserRatingCount || 0
             )
           );
         }
@@ -516,8 +506,7 @@ export default function Home() {
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -554,8 +543,7 @@ export default function Home() {
         (restaurant) => ({
           ...restaurant,
           latestSmokingReportAt: null,
-          latestSmokingReportStatus:
-            null,
+          latestSmokingReportStatus: null,
         })
       );
     }
@@ -591,8 +579,7 @@ export default function Home() {
         }
       );
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
@@ -665,8 +652,7 @@ export default function Home() {
       `/api/restaurants?${params.toString()}`
     );
 
-    const data =
-      await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
       throw new Error(
@@ -814,9 +800,7 @@ export default function Home() {
     );
   }
 
-  async function searchByArea(
-    event
-  ) {
+  async function searchByArea(event) {
     event?.preventDefault();
 
     const query =
@@ -1244,6 +1228,7 @@ export default function Home() {
     onSearch: showSearch,
     onFavorites: showFavorites,
     onHistory: showHistory,
+    onMyPage: showMyPage,
   };
 
   if (selectedRestaurant) {
@@ -1384,6 +1369,34 @@ export default function Home() {
 
         <BottomNav
           activeMode="history"
+          {...bottomNavProps}
+        />
+      </main>
+    );
+  }
+
+  if (
+    viewMode === "mypage"
+  ) {
+    return (
+      <main className="home">
+        <MyPageView
+          favoritesCount={
+            favorites.length
+          }
+          historyCount={
+            history.length
+          }
+          onOpenFavorites={
+            showFavorites
+          }
+          onOpenHistory={
+            showHistory
+          }
+        />
+
+        <BottomNav
+          activeMode="mypage"
           {...bottomNavProps}
         />
       </main>
