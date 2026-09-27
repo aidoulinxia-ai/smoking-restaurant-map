@@ -25,14 +25,13 @@ export async function POST(request) {
     if (!supabaseUrl || !supabaseSecretKey) {
       return NextResponse.json(
         {
-          error:
-            "Supabaseの接続設定がありません",
+          error: "Supabaseの接続設定がありません",
         },
         { status: 500 }
       );
     }
 
-    const response = await fetch(
+    const supabaseResponse = await fetch(
       `${supabaseUrl}/auth/v1/token?grant_type=password`,
       {
         method: "POST",
@@ -48,9 +47,9 @@ export async function POST(request) {
       }
     );
 
-    const data = await response.json();
+    const data = await supabaseResponse.json();
 
-    if (!response.ok) {
+    if (!supabaseResponse.ok) {
       console.error(
         "Supabase login failed:",
         data
@@ -67,7 +66,17 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
+    if (!data.access_token || !data.refresh_token) {
+      return NextResponse.json(
+        {
+          error:
+            "ログイン情報を取得できませんでした",
+        },
+        { status: 500 }
+      );
+    }
+
+    const response = NextResponse.json({
       ok: true,
       user: {
         id: data.user?.id || null,
@@ -75,17 +84,39 @@ export async function POST(request) {
         nickname:
           data.user?.user_metadata?.nickname || "",
       },
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresIn: data.expires_in,
     });
+
+    response.cookies.set(
+      "smoke-map-access-token",
+      data.access_token,
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: data.expires_in || 3600,
+      }
+    );
+
+    response.cookies.set(
+      "smoke-map-refresh-token",
+      data.refresh_token,
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      }
+    );
+
+    return response;
   } catch (error) {
     console.error(error);
 
     return NextResponse.json(
       {
-        error:
-          "ログインできませんでした",
+        error: "ログインできませんでした",
       },
       { status: 500 }
     );
