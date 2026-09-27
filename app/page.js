@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import BottomNav from "../components/BottomNav";
+import FavoritesView from "../components/FavoritesView";
 
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
@@ -352,6 +353,7 @@ export default function Home() {
 
   function getRatingValue(restaurant) {
     const rating = Number(restaurant.googleRating);
+
     return Number.isFinite(rating) ? rating : -1;
   }
 
@@ -991,6 +993,7 @@ export default function Home() {
               <div className="trustBox">
                 <div>
                   <strong>⭐ Google評価</strong>
+
                   <p>
                     ⭐{" "}
                     {Number(
@@ -1006,8 +1009,10 @@ export default function Home() {
 
           <div className="trustBox">
             <div className="trustIcon">✓</div>
+
             <div>
               <strong>掲載情報</strong>
+
               <p>
                 {selectedRestaurant.smoking || "喫煙情報なし"}
               </p>
@@ -1247,6 +1252,7 @@ export default function Home() {
                 }}
               >
                 <strong>✓ 報告ありがとう</strong>
+
                 <p
                   style={{
                     margin: "8px 0 0",
@@ -1295,98 +1301,11 @@ export default function Home() {
           </button>
         </header>
 
-        <section className="hero">
-          <div className="location">
-            <span>♡</span>
-            <span>保存したお店</span>
-          </div>
-
-          <h1>お気に入り</h1>
-
-          <p className="description">
-            気になるお店を保存して、
-            <br />
-            いつでもすぐに見直せます。
-          </p>
-        </section>
-
-        <section className="filterSection">
-          {favorites.length === 0 ? (
-            <div className="trustBox">
-              <div>
-                <strong>まだお気に入りはありません</strong>
-                <p>
-                  店舗詳細の「♡ お気に入りに追加」から保存できます。
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="filterTitle">
-                保存したお店（{favorites.length}件）
-              </p>
-
-              {favorites.map((restaurant) => (
-                <div
-                  className="trustBox"
-                  key={restaurant.id}
-                  style={{
-                    position: "relative",
-                  }}
-                >
-                  <button
-                    onClick={() => openRestaurant(restaurant)}
-                    style={{
-                      flex: 1,
-                      padding: 0,
-                      border: 0,
-                      background: "transparent",
-                      textAlign: "left",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <strong>{restaurant.name}</strong>
-
-                    <p>
-                      {restaurant.genre || "ジャンル情報なし"}
-                      <br />
-                      🚬 {restaurant.smoking || "喫煙情報なし"}
-                      <br />
-                      ⭐{" "}
-                      {restaurant.googleRating != null
-                        ? `${Number(
-                            restaurant.googleRating
-                          ).toFixed(1)}（${
-                            restaurant.googleUserRatingCount || 0
-                          }件）`
-                        : "Google評価なし"}
-                      <br />
-                      💰 {restaurant.budget || "予算情報なし"}
-                      <br />
-                      {restaurant.address || "住所情報なし"}
-                    </p>
-                  </button>
-
-                  <button
-                    onClick={() => toggleFavorite(restaurant)}
-                    aria-label="お気に入りから削除"
-                    style={{
-                      flex: "0 0 42px",
-                      width: "42px",
-                      height: "42px",
-                      border: "1px solid #dddddd",
-                      borderRadius: "12px",
-                      background: "#ffffff",
-                      fontSize: "20px",
-                    }}
-                  >
-                    ♥
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
-        </section>
+        <FavoritesView
+          favorites={favorites}
+          onOpenRestaurant={openRestaurant}
+          onToggleFavorite={toggleFavorite}
+        />
 
         <BottomNav
           activeMode="favorites"
@@ -1431,6 +1350,7 @@ export default function Home() {
             <div className="trustBox">
               <div>
                 <strong>まだ履歴はありません</strong>
+
                 <p>
                   お店の詳細を見ると、ここに自動で保存されます。
                 </p>
