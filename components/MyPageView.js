@@ -1,10 +1,16 @@
 "use client";
 
+import AuthView from "./AuthView";
+
 export default function MyPageView({
   favoritesCount,
   historyCount,
   onOpenFavorites,
   onOpenHistory,
+  authLoading,
+  currentUser,
+  onAuthSuccess,
+  onLogout,
 }) {
   return (
     <>
@@ -21,21 +27,25 @@ export default function MyPageView({
         <h1>マイページ</h1>
 
         <p className="description">
-          保存したお店や閲覧履歴を
-          <br />
-          まとめて確認できます。
+          {currentUser
+            ? `${currentUser.nickname || "ユーザー"}さんのSMOKE MAP`
+            : "お気に入りや履歴をまとめて確認できます。"}
         </p>
       </section>
 
       <section className="filterSection">
-        <p className="filterTitle">あなたのデータ</p>
+        <p className="filterTitle">
+          あなたのデータ
+        </p>
 
         <div className="filterGrid">
           <button
             className="filterCard"
             onClick={onOpenFavorites}
           >
-            <span className="filterIcon">♡</span>
+            <span className="filterIcon">
+              ♡
+            </span>
 
             <span>
               お気に入り
@@ -48,7 +58,9 @@ export default function MyPageView({
             className="filterCard"
             onClick={onOpenHistory}
           >
-            <span className="filterIcon">☷</span>
+            <span className="filterIcon">
+              ☷
+            </span>
 
             <span>
               閲覧履歴
@@ -59,23 +71,70 @@ export default function MyPageView({
         </div>
       </section>
 
-      <section className="filterSection">
-        <p className="filterTitle">アカウント</p>
-
-        <div className="trustBox">
-          <div>
-            <strong>ログイン機能は準備中</strong>
-
-            <p>
-              今後、アカウントを作成すると、
-              お気に入りや履歴を端末間で同期できるようにします。
-            </p>
+      {authLoading ? (
+        <section className="filterSection">
+          <div className="trustBox">
+            <div>
+              <strong>
+                ログイン情報を確認中...
+              </strong>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : currentUser ? (
+        <section className="filterSection">
+          <p className="filterTitle">
+            アカウント
+          </p>
+
+          <div
+            className="trustBox"
+            style={{
+              marginLeft: 0,
+              marginRight: 0,
+            }}
+          >
+            <div>
+              <strong>
+                {currentUser.nickname ||
+                  "ユーザー"}
+              </strong>
+
+              <p>
+                {currentUser.email || ""}
+                <br />
+                ログイン中
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            style={{
+              width: "100%",
+              minHeight: "52px",
+              border:
+                "1px solid #dddddd",
+              borderRadius: "14px",
+              background: "#ffffff",
+              color: "#151515",
+              fontWeight: "800",
+            }}
+          >
+            ログアウト
+          </button>
+        </section>
+      ) : (
+        <AuthView
+          onAuthSuccess={onAuthSuccess}
+        />
+      )}
 
       <section className="filterSection">
-        <p className="filterTitle">SMOKE MAP</p>
+        <p className="filterTitle">
+          SMOKE MAP
+        </p>
 
         <div className="trustBox">
           <div>
