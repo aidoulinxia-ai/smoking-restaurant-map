@@ -2,22 +2,11 @@
 
 export default function FavoritesView({
   favorites,
-  openRestaurant,
-  toggleFavorite,
+  onOpenRestaurant,
+  onToggleFavorite,
 }) {
   return (
     <>
-      <header className="header">
-        <div className="logo">SMOKE MAP</div>
-
-        <button
-          className="menuButton"
-          aria-label="戻る"
-        >
-          ←
-        </button>
-      </header>
-
       <section className="hero">
         <div className="location">
           <span>♡</span>
@@ -59,7 +48,7 @@ export default function FavoritesView({
                 }}
               >
                 <button
-                  onClick={() => openRestaurant(restaurant)}
+                  onClick={() => onOpenRestaurant(restaurant)}
                   style={{
                     flex: 1,
                     padding: 0,
@@ -68,4 +57,49 @@ export default function FavoritesView({
                     textAlign: "left",
                     cursor: "pointer",
                   }}
-               
+                >
+                  <strong>{restaurant.name}</strong>
+
+                  <p>
+                    {restaurant.genre || "ジャンル情報なし"}
+                    <br />
+                    🚬 {restaurant.smoking || "喫煙情報なし"}
+                    <br />
+                    ⭐{" "}
+                    {restaurant.googleRating != null
+                      ? `${Number(
+                          restaurant.googleRating
+                        ).toFixed(1)}（${
+                          restaurant.googleUserRatingCount || 0
+                        }件）`
+                      : "Google評価なし"}
+                    <br />
+                    💰 {restaurant.budget || "予算情報なし"}
+                    <br />
+                    {restaurant.address || "住所情報なし"}
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => onToggleFavorite(restaurant)}
+                  aria-label="お気に入りから削除"
+                  style={{
+                    flex: "0 0 42px",
+                    width: "42px",
+                    height: "42px",
+                    border: "1px solid #dddddd",
+                    borderRadius: "12px",
+                    background: "#ffffff",
+                    fontSize: "20px",
+                  }}
+                >
+                  ♥
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+      </section>
+    </>
+  );
+}
