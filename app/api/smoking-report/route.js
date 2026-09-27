@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const allowedStatuses = new Set([
   "paper_ok",
@@ -36,6 +37,31 @@ export async function POST(request) {
       );
     }
 
+    let userId = null;
+
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get(
+      "smoke-map-access-token"
+    )?.value;
+
+    if (accessToken) {
+      const userResponse = await fetch(
+        `${supabaseUrl}/auth/v1/user`,
+        {
+          headers: {
+            apikey: supabaseSecretKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          cache: "no-store",
+        }
+      );
+
+      if (userResponse.ok) {
+        const user = await userResponse.json();
+        userId = user.id || null;
+      }
+    }
+
     const response = await fetch(
       `${supabaseUrl}/rest/v1/smoking_reports`,
       {
@@ -50,6 +76,7 @@ export async function POST(request) {
           restaurant_id: String(restaurantId),
           restaurant_name: restaurantName,
           smoking_status: smokingStatus,
+          user_id: userId,
         }),
         cache: "no-store",
       }
@@ -57,7 +84,11 @@ export async function POST(request) {
 
     if (!response.ok) {
       const detail = await response.text();
-      console.error("Supabase insert failed:", detail);
+
+      console.error(
+        "Supabase insert failed:",
+        detail
+      );
 
       return NextResponse.json(
         { error: "報告を保存できませんでした" },
@@ -65,7 +96,10 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      linkedToAccount: Boolean(userId),
+    });
   } catch (error) {
     console.error(error);
 
