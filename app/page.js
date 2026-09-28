@@ -7,6 +7,7 @@ import HistoryView from "../components/HistoryView";
 import RestaurantDetail from "../components/RestaurantDetail";
 import SearchView from "../components/SearchView";
 import MyPageView from "../components/MyPageView";
+import MyReportsView from "../components/MyReportsView";
 
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
@@ -39,6 +40,11 @@ export default function Home() {
 
   const [authLoading, setAuthLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
+
+  const [myReports, setMyReports] = useState([]);
+  const [myReportsLoading, setMyReportsLoading] =
+    useState(false);
+  const [myReportsError, setMyReportsError] = useState("");
 
   const filters = [
     {
@@ -203,6 +209,8 @@ export default function Home() {
       }
 
       setCurrentUser(null);
+      setMyReports([]);
+      setMyReportsError("");
     } catch (error) {
       console.error(
         "ログアウトに失敗しました",
@@ -215,6 +223,79 @@ export default function Home() {
       );
     } finally {
       setAuthLoading(false);
+    }
+  }
+
+  async function loadMyReports() {
+    setMyReportsLoading(true);
+    setMyReportsError("");
+
+    try {
+      /*
+        /api/auth/me を先に呼ぶことで、
+        access token が期限切れの場合でも
+        refresh token から更新してから
+        自分の報告を取得できるようにする。
+      */
+      const authResponse = await fetch(
+        "/api/auth/me",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const authData = await authResponse.json();
+
+      if (
+        !authResponse.ok ||
+        !authData.loggedIn ||
+        !authData.user
+      ) {
+        setCurrentUser(null);
+
+        throw new Error(
+          "ログインが必要です"
+        );
+      }
+
+      setCurrentUser(authData.user);
+
+      const response = await fetch(
+        "/api/my-reports",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "報告履歴を取得できませんでした"
+        );
+      }
+
+      setMyReports(
+        Array.isArray(data.reports)
+          ? data.reports
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "自分の報告履歴の取得に失敗しました",
+        error
+      );
+
+      setMyReports([]);
+      setMyReportsError(
+        error.message ||
+          "報告履歴を取得できませんでした"
+      );
+    } finally {
+      setMyReportsLoading(false);
     }
   }
 
@@ -360,6 +441,20 @@ export default function Home() {
     setReportError("");
     setSmokingStatus(null);
     scrollToTop();
+  }
+
+  function showMyReports() {
+    if (!currentUser) {
+      return;
+    }
+
+    setSelectedRestaurant(null);
+    setViewMode("myreports");
+    setReportResult("");
+    setReportError("");
+    setSmokingStatus(null);
+    scrollToTop();
+    loadMyReports();
   }
 
   function toggleFilter(filterId) {
@@ -1057,6 +1152,15 @@ export default function Home() {
     setReportError("");
 
     try {
+      /*
+        報告前に認証状態を確認する。
+        access token が期限切れなら
+        /api/auth/me 側で更新される。
+      */
+      if (currentUser) {
+        await checkAuth();
+      }
+
       const response = await fetch(
         "/api/smoking-report",
         {
@@ -1465,6 +1569,29 @@ export default function Home() {
   }
 
   if (
+    viewMode === "myreports"
+  ) {
+    return (
+      <main className="home">
+        <MyReportsView
+          reports={myReports}
+          loading={myReportsLoading}
+          error={myReportsError}
+          onBack={showMyPage}
+          formatTimeAgo={
+            formatTimeAgo
+          }
+        />
+
+        <BottomNav
+          activeMode="mypage"
+          {...bottomNavProps}
+        />
+      </main>
+    );
+  }
+
+  if (
     viewMode === "mypage"
   ) {
     return (
@@ -1481,6 +1608,9 @@ export default function Home() {
           }
           onOpenHistory={
             showHistory
+          }
+          onOpenMyReports={
+            showMyReports
           }
           authLoading={
             authLoading
