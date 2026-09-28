@@ -113,12 +113,29 @@ export default function RestaurantDetail({
                   smokingStatus.latestReport.created_at
                 )}
                 <br />
+
+                {smokingStatus.latestReport.nickname ? (
+                  <>
+                    <strong>
+                      {
+                        smokingStatus.latestReport
+                          .nickname
+                      }
+                    </strong>
+                    ：
+                  </>
+                ) : (
+                  <>匿名：</>
+                )}
+
                 {latestReportText(
                   smokingStatus.latestReport.smoking_status
                 )}
+
                 <br />
                 直近{smokingStatus.total}件中
-                {smokingStatus.smokedCount}件が「吸えた」と報告
+                {smokingStatus.smokedCount}件が
+                「吸えた」と報告
               </p>
             ) : (
               <p>
