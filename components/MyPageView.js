@@ -7,6 +7,7 @@ export default function MyPageView({
   historyCount,
   onOpenFavorites,
   onOpenHistory,
+  onOpenMyReports,
   authLoading,
   currentUser,
   onAuthSuccess,
@@ -68,6 +69,23 @@ export default function MyPageView({
               {historyCount}件
             </span>
           </button>
+
+          {currentUser && (
+            <button
+              className="filterCard"
+              onClick={onOpenMyReports}
+            >
+              <span className="filterIcon">
+                💬
+              </span>
+
+              <span>
+                自分の
+                <br />
+                喫煙報告
+              </span>
+            </button>
+          )}
         </div>
       </section>
 
