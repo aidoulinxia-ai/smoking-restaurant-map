@@ -37,6 +37,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState("search");
   const [history, setHistory] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [localFavorites, setLocalFavorites] = useState([]);
 
   const [authLoading, setAuthLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
@@ -91,6 +92,7 @@ export default function Home() {
         const parsedFavorites = JSON.parse(savedFavorites);
 
         if (Array.isArray(parsedFavorites)) {
+          setLocalFavorites(parsedFavorites);
           setFavorites(parsedFavorites);
         }
       }
@@ -142,6 +144,129 @@ export default function Home() {
     };
   }, [restaurants]);
 
+  function getStoredLocalFavorites() {
+    try {
+      const savedFavorites =
+        window.localStorage.getItem(
+          FAVORITES_STORAGE_KEY
+        );
+
+      if (!savedFavorites) {
+        return [];
+      }
+
+      const parsedFavorites =
+        JSON.parse(savedFavorites);
+
+      return Array.isArray(parsedFavorites)
+        ? parsedFavorites
+        : [];
+    } catch (error) {
+      console.error(
+        "端末のお気に入りを読み込めませんでした",
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function saveLocalFavorites(nextFavorites) {
+    setLocalFavorites(nextFavorites);
+
+    try {
+      window.localStorage.setItem(
+        FAVORITES_STORAGE_KEY,
+        JSON.stringify(nextFavorites)
+      );
+    } catch (error) {
+      console.error(
+        "端末のお気に入りの保存に失敗しました",
+        error
+      );
+    }
+  }
+
+  async function loadCloudFavorites(
+    localFavoritesToMerge = []
+  ) {
+    try {
+      const localList =
+        Array.isArray(localFavoritesToMerge)
+          ? localFavoritesToMerge
+          : [];
+
+      if (localList.length > 0) {
+        await Promise.all(
+          localList.map(async (restaurant) => {
+            if (!restaurant?.id || !restaurant?.name) {
+              return;
+            }
+
+            const response = await fetch(
+              "/api/favorites",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+                body: JSON.stringify({
+                  restaurant,
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              const data =
+                await response.json().catch(
+                  () => ({})
+                );
+
+              throw new Error(
+                data.error ||
+                  "お気に入りを同期できませんでした"
+              );
+            }
+          })
+        );
+      }
+
+      const response = await fetch(
+        "/api/favorites",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "お気に入りを取得できませんでした"
+        );
+      }
+
+      const cloudFavorites =
+        Array.isArray(data.favorites)
+          ? data.favorites
+          : [];
+
+      setFavorites(cloudFavorites);
+
+      return cloudFavorites;
+    } catch (error) {
+      console.error(
+        "クラウドお気に入りの取得に失敗しました",
+        error
+      );
+
+      return null;
+    }
+  }
+
   async function checkAuth() {
     setAuthLoading(true);
 
@@ -165,8 +290,26 @@ export default function Home() {
 
       if (data.loggedIn && data.user) {
         setCurrentUser(data.user);
+
+        const storedLocalFavorites =
+          getStoredLocalFavorites();
+
+        await loadCloudFavorites(
+          storedLocalFavorites
+        );
       } else {
         setCurrentUser(null);
+
+        const storedLocalFavorites =
+          getStoredLocalFavorites();
+
+        setLocalFavorites(
+          storedLocalFavorites
+        );
+
+        setFavorites(
+          storedLocalFavorites
+        );
       }
     } catch (error) {
       console.error(
@@ -175,6 +318,17 @@ export default function Home() {
       );
 
       setCurrentUser(null);
+
+      const storedLocalFavorites =
+        getStoredLocalFavorites();
+
+      setLocalFavorites(
+        storedLocalFavorites
+      );
+
+      setFavorites(
+        storedLocalFavorites
+      );
     } finally {
       setAuthLoading(false);
     }
@@ -211,6 +365,17 @@ export default function Home() {
       setCurrentUser(null);
       setMyReports([]);
       setMyReportsError("");
+
+      const storedLocalFavorites =
+        getStoredLocalFavorites();
+
+      setLocalFavorites(
+        storedLocalFavorites
+      );
+
+      setFavorites(
+        storedLocalFavorites
+      );
     } catch (error) {
       console.error(
         "ログアウトに失敗しました",
@@ -231,12 +396,6 @@ export default function Home() {
     setMyReportsError("");
 
     try {
-      /*
-        /api/auth/me を先に呼ぶことで、
-        access token が期限切れの場合でも
-        refresh token から更新してから
-        自分の報告を取得できるようにする。
-      */
       const authResponse = await fetch(
         "/api/auth/me",
         {
@@ -356,16 +515,8 @@ export default function Home() {
   function saveFavorites(nextFavorites) {
     setFavorites(nextFavorites);
 
-    try {
-      window.localStorage.setItem(
-        FAVORITES_STORAGE_KEY,
-        JSON.stringify(nextFavorites)
-      );
-    } catch (error) {
-      console.error(
-        "お気に入りの保存に失敗しました",
-        error
-      );
+    if (!currentUser) {
+      saveLocalFavorites(nextFavorites);
     }
   }
 
@@ -377,30 +528,148 @@ export default function Home() {
     );
   }
 
-  function toggleFavorite(restaurant) {
+  async function toggleFavorite(restaurant) {
     if (!restaurant?.id) {
       return;
     }
 
-    if (isFavorite(restaurant.id)) {
-      saveFavorites(
-        favorites.filter(
-          (item) =>
-            String(item.id) !==
-            String(restaurant.id)
-        )
-      );
+    const alreadyFavorite =
+      isFavorite(restaurant.id);
+
+    if (!currentUser) {
+      if (alreadyFavorite) {
+        saveFavorites(
+          favorites.filter(
+            (item) =>
+              String(item.id) !==
+              String(restaurant.id)
+          )
+        );
+
+        return;
+      }
+
+      saveFavorites([
+        {
+          ...restaurant,
+          favoritedAt:
+            new Date().toISOString(),
+        },
+        ...favorites,
+      ]);
 
       return;
     }
 
-    saveFavorites([
-      {
-        ...restaurant,
-        favoritedAt: new Date().toISOString(),
-      },
+    const previousFavorites = favorites;
+
+    if (alreadyFavorite) {
+      const nextFavorites =
+        favorites.filter(
+          (item) =>
+            String(item.id) !==
+            String(restaurant.id)
+        );
+
+      setFavorites(nextFavorites);
+
+      try {
+        await fetch("/api/auth/me", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const response = await fetch(
+          `/api/favorites?restaurantId=${encodeURIComponent(
+            restaurant.id
+          )}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              "お気に入りを削除できませんでした"
+          );
+        }
+      } catch (error) {
+        console.error(
+          "お気に入りの削除に失敗しました",
+          error
+        );
+
+        setFavorites(
+          previousFavorites
+        );
+
+        window.alert(
+          error.message ||
+            "お気に入りを削除できませんでした"
+        );
+      }
+
+      return;
+    }
+
+    const favoriteRestaurant = {
+      ...restaurant,
+      favoritedAt:
+        new Date().toISOString(),
+    };
+
+    setFavorites([
+      favoriteRestaurant,
       ...favorites,
     ]);
+
+    try {
+      await fetch("/api/auth/me", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const response = await fetch(
+        "/api/favorites",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            restaurant:
+              favoriteRestaurant,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "お気に入りを保存できませんでした"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "お気に入りの保存に失敗しました",
+        error
+      );
+
+      setFavorites(
+        previousFavorites
+      );
+
+      window.alert(
+        error.message ||
+          "お気に入りを保存できませんでした"
+      );
+    }
   }
 
   function scrollToTop() {
@@ -1152,11 +1421,6 @@ export default function Home() {
     setReportError("");
 
     try {
-      /*
-        報告前に認証状態を確認する。
-        access token が期限切れなら
-        /api/auth/me 側で更新される。
-      */
       if (currentUser) {
         await checkAuth();
       }
