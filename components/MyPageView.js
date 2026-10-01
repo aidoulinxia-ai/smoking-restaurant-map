@@ -7,6 +7,7 @@ export default function MyPageView({
   historyCount,
   onOpenFavorites,
   onOpenHistory,
+  onOpenMySmokedPlaces,
   onOpenMyReports,
   authLoading,
   currentUser,
@@ -69,6 +70,23 @@ export default function MyPageView({
               {historyCount}件
             </span>
           </button>
+
+          {currentUser && (
+            <button
+              className="filterCard"
+              onClick={onOpenMySmokedPlaces}
+            >
+              <span className="filterIcon">
+                📍
+              </span>
+
+              <span>
+                自分が
+                <br />
+                吸えた店
+              </span>
+            </button>
+          )}
 
           {currentUser && (
             <button
