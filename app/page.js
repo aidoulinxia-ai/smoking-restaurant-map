@@ -8,6 +8,7 @@ import RestaurantDetail from "../components/RestaurantDetail";
 import SearchView from "../components/SearchView";
 import MyPageView from "../components/MyPageView";
 import MyReportsView from "../components/MyReportsView";
+import MySmokedPlacesView from "../components/MySmokedPlacesView";
 
 const HISTORY_STORAGE_KEY = "smoke-map-history";
 const HISTORY_LIMIT = 20;
@@ -46,6 +47,17 @@ export default function Home() {
   const [myReportsLoading, setMyReportsLoading] =
     useState(false);
   const [myReportsError, setMyReportsError] = useState("");
+
+  const [mySmokedPlaces, setMySmokedPlaces] =
+    useState([]);
+  const [
+    mySmokedPlacesLoading,
+    setMySmokedPlacesLoading,
+  ] = useState(false);
+  const [
+    mySmokedPlacesError,
+    setMySmokedPlacesError,
+  ] = useState("");
 
   const filters = [
     {
@@ -365,6 +377,8 @@ export default function Home() {
       setCurrentUser(null);
       setMyReports([]);
       setMyReportsError("");
+      setMySmokedPlaces([]);
+      setMySmokedPlacesError("");
 
       const storedLocalFavorites =
         getStoredLocalFavorites();
@@ -455,6 +469,145 @@ export default function Home() {
       );
     } finally {
       setMyReportsLoading(false);
+    }
+  }
+
+  async function loadMySmokedPlaces() {
+    setMySmokedPlacesLoading(true);
+    setMySmokedPlacesError("");
+    setMySmokedPlaces([]);
+
+    try {
+      const authResponse = await fetch(
+        "/api/auth/me",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const authData = await authResponse.json();
+
+      if (
+        !authResponse.ok ||
+        !authData.loggedIn ||
+        !authData.user
+      ) {
+        setCurrentUser(null);
+
+        throw new Error(
+          "ログインが必要です"
+        );
+      }
+
+      setCurrentUser(authData.user);
+
+      const response = await fetch(
+        "/api/my-smoked-places",
+        {
+          method: "GET",
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            "吸えた店を取得できませんでした"
+        );
+      }
+
+      const reportedPlaces =
+        Array.isArray(data.places)
+          ? data.places
+          : [];
+
+      if (reportedPlaces.length === 0) {
+        setMySmokedPlaces([]);
+        return;
+      }
+
+      const enrichedPlaces = await Promise.all(
+        reportedPlaces.map(async (place) => {
+          try {
+            const restaurantResponse =
+              await fetch(
+                `/api/restaurants?id=${encodeURIComponent(
+                  place.restaurantId
+                )}`,
+                {
+                  method: "GET",
+                  cache: "no-store",
+                }
+              );
+
+            if (!restaurantResponse.ok) {
+              return null;
+            }
+
+            const restaurantData =
+              await restaurantResponse.json();
+
+            const restaurant =
+              restaurantData.restaurant;
+
+            if (
+              !restaurant?.id ||
+              !restaurant?.name
+            ) {
+              return null;
+            }
+
+            return {
+              ...restaurant,
+              restaurantId:
+                place.restaurantId,
+              restaurantName:
+                place.restaurantName,
+              smokingStatus:
+                place.smokingStatus,
+              reportedAt:
+                place.reportedAt,
+            };
+          } catch (error) {
+            console.error(
+              "店舗情報の取得に失敗しました",
+              place.restaurantId,
+              error
+            );
+
+            return null;
+          }
+        })
+      );
+
+      const availablePlaces =
+        enrichedPlaces.filter(Boolean);
+
+      if (availablePlaces.length === 0) {
+        throw new Error(
+          "報告したお店の店舗情報を取得できませんでした"
+        );
+      }
+
+      setMySmokedPlaces(
+        availablePlaces
+      );
+    } catch (error) {
+      console.error(
+        "自分が吸えた店の取得に失敗しました",
+        error
+      );
+
+      setMySmokedPlaces([]);
+      setMySmokedPlacesError(
+        error.message ||
+          "吸えた店を取得できませんでした"
+      );
+    } finally {
+      setMySmokedPlacesLoading(false);
     }
   }
 
@@ -724,6 +877,20 @@ export default function Home() {
     setSmokingStatus(null);
     scrollToTop();
     loadMyReports();
+  }
+
+  function showMySmokedPlaces() {
+    if (!currentUser) {
+      return;
+    }
+
+    setSelectedRestaurant(null);
+    setViewMode("mysmokedplaces");
+    setReportResult("");
+    setReportError("");
+    setSmokingStatus(null);
+    scrollToTop();
+    loadMySmokedPlaces();
   }
 
   function toggleFilter(filterId) {
@@ -1748,7 +1915,11 @@ export default function Home() {
         />
 
         <BottomNav
-          activeMode={viewMode}
+          activeMode={
+            viewMode === "mysmokedplaces"
+              ? "mypage"
+              : viewMode
+          }
           {...bottomNavProps}
         />
       </main>
@@ -1856,6 +2027,38 @@ export default function Home() {
   }
 
   if (
+    viewMode === "mysmokedplaces"
+  ) {
+    return (
+      <main className="home">
+        <MySmokedPlacesView
+          places={mySmokedPlaces}
+          loading={
+            mySmokedPlacesLoading
+          }
+          error={
+            mySmokedPlacesError
+          }
+          onBack={
+            showMyPage
+          }
+          onOpenRestaurant={
+            openRestaurant
+          }
+          formatTimeAgo={
+            formatTimeAgo
+          }
+        />
+
+        <BottomNav
+          activeMode="mypage"
+          {...bottomNavProps}
+        />
+      </main>
+    );
+  }
+
+  if (
     viewMode === "mypage"
   ) {
     return (
@@ -1872,6 +2075,9 @@ export default function Home() {
           }
           onOpenHistory={
             showHistory
+          }
+          onOpenMySmokedPlaces={
+            showMySmokedPlaces
           }
           onOpenMyReports={
             showMyReports
