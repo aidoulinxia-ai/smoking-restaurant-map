@@ -12,20 +12,26 @@ body {
     "Noto Sans JP", sans-serif;
 }
 
+html {
+  min-height: 100%;
+}
+
 button {
   font: inherit;
 }
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .home {
   width: 100%;
   max-width: 480px;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
-  padding-bottom: 95px;
+  padding-bottom: calc(95px + env(safe-area-inset-bottom, 0px));
   background: #ffffff;
 }
 
@@ -181,16 +187,26 @@ body {
   position: fixed;
   left: 50%;
   bottom: 0;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
+
   width: 100%;
   max-width: 480px;
-  height: 78px;
-  padding: 8px 12px 18px;
-  background: rgba(255, 255, 255, 0.96);
+
+  height: calc(78px + env(safe-area-inset-bottom, 0px));
+
+  padding: 8px 12px
+    calc(18px + env(safe-area-inset-bottom, 0px));
+
+  background: rgba(255, 255, 255, 0.98);
   border-top: 1px solid #e8e8e8;
+
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  z-index: 10;
+
+  z-index: 1000;
+
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .bottomNav button {
