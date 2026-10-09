@@ -1,13 +1,15 @@
+
 import { NextResponse } from "next/server";
+
+const CACHE_DURATION = 24 * 60 * 60 * 1000;
+const ratingCache = new Map();
 
 export async function POST(request) {
   try {
     const { restaurants } = await request.json();
 
     if (!Array.isArray(restaurants) || restaurants.length === 0) {
-      return NextResponse.json({
-        ratings: {},
-      });
+      return NextResponse.json({ ratings: {} });
     }
 
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -29,17 +31,26 @@ export async function POST(request) {
       .slice(0, 20);
 
     const ratings = {};
+    const now = Date.now();
 
     await Promise.all(
       targetRestaurants.map(async (restaurant) => {
-        try {
-          const textQuery = [
-            restaurant.name,
-            restaurant.address,
-          ]
-            .filter(Boolean)
-            .join(" ");
+        const restaurantId = String(restaurant.id);
+        const textQuery = [
+          restaurant.name,
+          restaurant.address,
+        ]
+          .filter(Boolean)
+          .join(" ");
 
+        const cached = ratingCache.get(textQuery);
+
+        if (cached && now - cached.timestamp < CACHE_DURATION) {
+          ratings[restaurantId] = cached.rating;
+          return;
+        }
+
+        try {
           const response = await fetch(
             "https://places.googleapis.com/v1/places:searchText",
             {
@@ -62,24 +73,20 @@ export async function POST(request) {
 
           if (!response.ok) {
             const detail = await response.text();
-
             console.error(
               "Google Places search failed:",
               restaurant.name,
               detail
             );
-
             return;
           }
 
           const data = await response.json();
           const place = data.places?.[0];
 
-          if (!place) {
-            return;
-          }
+          if (!place) return;
 
-          ratings[String(restaurant.id)] = {
+          const rating = {
             placeId: place.id || null,
             rating:
               typeof place.rating === "number"
@@ -90,6 +97,13 @@ export async function POST(request) {
                 ? place.userRatingCount
                 : 0,
           };
+
+          ratings[restaurantId] = rating;
+
+          ratingCache.set(textQuery, {
+            rating,
+            timestamp: Date.now(),
+          });
         } catch (error) {
           console.error(
             "Google rating failed:",
@@ -100,9 +114,7 @@ export async function POST(request) {
       })
     );
 
-    return NextResponse.json({
-      ratings,
-    });
+    return NextResponse.json({ ratings });
   } catch (error) {
     console.error(error);
 
