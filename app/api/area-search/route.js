@@ -1,4 +1,52 @@
+
 import { NextResponse } from "next/server";
+
+const DAILY_API_LIMIT = 100;
+
+async function reserveGoogleApiRequest() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase接続設定がありません");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/reserve_google_api_requests`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_count: 1,
+          p_limit: DAILY_API_LIMIT,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Google API利用枠の確保に失敗:",
+        response.status,
+        await response.text()
+      );
+      return false;
+    }
+
+    return (await response.json()) === true;
+  } catch (error) {
+    console.error("Google API利用枠エラー:", error);
+    return false;
+  }
+}
 
 export async function GET(request) {
   try {
@@ -18,6 +66,19 @@ export async function GET(request) {
       return NextResponse.json(
         { error: "Google Places APIキーがありません" },
         { status: 500 }
+      );
+    }
+
+    const reserved = await reserveGoogleApiRequest();
+
+    if (!reserved) {
+      return NextResponse.json(
+        {
+          error:
+            "Google APIの利用上限に達したか、利用枠を確認できませんでした",
+          limitReached: true,
+        },
+        { status: 429 }
       );
     }
 
