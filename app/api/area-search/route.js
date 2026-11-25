@@ -1,7 +1,7 @@
-
 import { NextResponse } from "next/server";
 
 const DAILY_API_LIMIT = 100;
+const SERVICE_KEY = "google_places_area";
 
 async function reserveGoogleApiRequest() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -54,6 +54,57 @@ async function reserveGoogleApiRequest() {
   }
 }
 
+async function reserveExternalServiceUsage() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase接続設定がありません");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/reserve_external_service_usage`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_service_key: SERVICE_KEY,
+          p_count: 1,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "外部サービス利用枠の確保に失敗:",
+        response.status,
+        await response.text()
+      );
+
+      return false;
+    }
+
+    return (await response.json()) === true;
+  } catch (error) {
+    console.error(
+      "外部サービス利用枠エラー:",
+      error
+    );
+
+    return false;
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -80,8 +131,6 @@ export async function GET(request) {
       );
     }
 
-    // Google APIを呼び出す前に
-    // Supabaseで利用枠を1回分確保する
     const reserved =
       await reserveGoogleApiRequest();
 
@@ -96,7 +145,20 @@ export async function GET(request) {
       );
     }
 
-    // Google Places APIで場所を検索
+    const externalReserved =
+      await reserveExternalServiceUsage();
+
+    if (!externalReserved) {
+      return NextResponse.json(
+        {
+          error:
+            "エリア検索の利用上限に達したか、現在利用できません。現在地検索をお試しください。",
+          limitReached: true,
+        },
+        { status: 429 }
+      );
+    }
+
     const response = await fetch(
       "https://places.googleapis.com/v1/places:searchText",
       {
