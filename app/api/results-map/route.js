@@ -1,5 +1,120 @@
 import { NextResponse } from "next/server";
 
+const SERVICE_KEY = "google_maps_js";
+
+async function reserveExternalServiceUsage() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase接続設定がありません");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/reserve_external_service_usage`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_service_key: SERVICE_KEY,
+          p_count: 1,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Google Maps利用枠の確保に失敗:",
+        response.status,
+        await response.text()
+      );
+
+      return false;
+    }
+
+    return (await response.json()) === true;
+  } catch (error) {
+    console.error(
+      "Google Maps利用枠エラー:",
+      error
+    );
+
+    return false;
+  }
+}
+
+function mapUnavailableResponse() {
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f5;
+      font-family: sans-serif;
+      color: #555;
+      text-align: center;
+    }
+
+    .message {
+      padding: 24px;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .title {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="message">
+    <div class="title">
+      現在、地図を表示できません
+    </div>
+    店舗一覧から引き続き<br />
+    お店をお探しいただけます。
+  </div>
+</body>
+</html>
+  `;
+
+  return new NextResponse(html, {
+    status: 429,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
 
@@ -56,6 +171,11 @@ export async function GET(request) {
   }
 
   const validRestaurants = restaurants
+    .filter(
+      (restaurant) =>
+        restaurant &&
+        typeof restaurant === "object"
+    )
     .map((restaurant) => ({
       id: String(restaurant.id || ""),
       name: String(restaurant.name || ""),
@@ -78,6 +198,13 @@ export async function GET(request) {
       },
       { status: 400 }
     );
+  }
+
+  const reserved =
+    await reserveExternalServiceUsage();
+
+  if (!reserved) {
+    return mapUnavailableResponse();
   }
 
   const safeRestaurants = JSON.stringify(
