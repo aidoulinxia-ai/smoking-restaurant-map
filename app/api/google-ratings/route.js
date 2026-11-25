@@ -1,8 +1,9 @@
-
 import { NextResponse } from "next/server";
 
 const DAILY_API_LIMIT = 100;
 const CACHE_TTL_MS = 30 * 60 * 1000;
+
+const SERVICE_KEY = "google_places_ratings";
 
 const ratingCache = new Map();
 
@@ -50,6 +51,57 @@ async function reserveGoogleApiRequests(count) {
   } catch (error) {
     console.error(
       "Google API利用枠エラー:",
+      error
+    );
+
+    return false;
+  }
+}
+
+async function reserveExternalServiceUsage(count) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase接続設定がありません");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/reserve_external_service_usage`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_service_key: SERVICE_KEY,
+          p_count: count,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "外部サービス利用枠の確保に失敗:",
+        response.status,
+        await response.text()
+      );
+
+      return false;
+    }
+
+    return (await response.json()) === true;
+  } catch (error) {
+    console.error(
+      "外部サービス利用枠エラー:",
       error
     );
 
@@ -147,6 +199,18 @@ export async function POST(request) {
       );
 
     if (!reserved) {
+      return NextResponse.json({
+        ratings,
+        limitReached: true,
+      });
+    }
+
+    const externalReserved =
+      await reserveExternalServiceUsage(
+        uniqueQueries.length
+      );
+
+    if (!externalReserved) {
       return NextResponse.json({
         ratings,
         limitReached: true,
