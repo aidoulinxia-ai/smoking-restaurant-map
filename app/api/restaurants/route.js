@@ -1,5 +1,69 @@
 import { NextResponse } from "next/server";
 
+const SERVICE_KEY = "hotpepper";
+
+async function reserveExternalServiceUsage() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+
+  const supabaseKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase接続設定がありません");
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/reserve_external_service_usage`,
+      {
+        method: "POST",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_service_key: SERVICE_KEY,
+          p_count: 1,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Hot Pepper利用枠の確保に失敗:",
+        response.status,
+        await response.text()
+      );
+
+      return false;
+    }
+
+    return (await response.json()) === true;
+  } catch (error) {
+    console.error(
+      "Hot Pepper利用枠エラー:",
+      error
+    );
+
+    return false;
+  }
+}
+
+function limitReachedResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "現在、店舗情報の取得を一時停止しています。時間をおいて再度お試しください。",
+      limitReached: true,
+    },
+    { status: 429 }
+  );
+}
+
 function getSmokingType(smokingText) {
   if (!smokingText) {
     return "unknown";
@@ -98,6 +162,13 @@ export async function GET(request) {
           format: "json",
         });
 
+      const reserved =
+        await reserveExternalServiceUsage();
+
+      if (!reserved) {
+        return limitReachedResponse();
+      }
+
       const response = await fetch(
         `https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?${params.toString()}`,
         {
@@ -113,6 +184,12 @@ export async function GET(request) {
 
       const data =
         await response.json();
+
+      if (data.results?.error?.length) {
+        throw new Error(
+          "Hot Pepper APIからエラーが返されました"
+        );
+      }
 
       const shop =
         data.results?.shop?.[0];
@@ -134,8 +211,7 @@ export async function GET(request) {
     }
 
     /*
-      ここから下は今まで通りの
-      現在地・エリア検索。
+      現在地・エリア・キーワード検索。
     */
     if (!lat || !lng) {
       return NextResponse.json(
@@ -164,6 +240,13 @@ export async function GET(request) {
       );
     }
 
+    const reserved =
+      await reserveExternalServiceUsage();
+
+    if (!reserved) {
+      return limitReachedResponse();
+    }
+
     const response = await fetch(
       `https://webservice.recruit.co.jp/hotpepper/gourmet/v1/?${params.toString()}`,
       {
@@ -179,6 +262,12 @@ export async function GET(request) {
 
     const data =
       await response.json();
+
+    if (data.results?.error?.length) {
+      throw new Error(
+        "Hot Pepper APIからエラーが返されました"
+      );
+    }
 
     const restaurants =
       data.results?.shop?.map(
@@ -206,7 +295,10 @@ export async function GET(request) {
       restaurants,
     });
   } catch (error) {
-    console.error(error);
+    console.error(
+      "店舗情報取得エラー:",
+      error
+    );
 
     return NextResponse.json(
       {
